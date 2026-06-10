@@ -739,7 +739,7 @@
 </main>
 
 <script>
-  mapboxgl.accessToken = 'pk.eyJ1IjoiYnlhdGVzNDAiLCJhIjoiY21wNG53eDhkMGQ4aDJyb2xwaWMyYTJ6bCJ9.UixLEupbwuR2wKDum5b8DQ';
+  mapboxgl.accessToken = 'pk.eyJ1IjoiYnlhdGVzNDAiLCJhIjoiY21xN25reXZ6MDFxeTJwcHp0eWd1eThkZSJ9.e8kuKAeb7KnerdLxQU7vpQ';
 
   const db = supabase.createClient(
     'https://lcenhesezodgrjrymngg.supabase.co',
@@ -779,13 +779,29 @@
         tx.onerror = () => rej(tx.error);
       });
     },
+    async del(key) {
+      const d = await this.open();
+      return new Promise((res, rej) => {
+        const tx = d.transaction('kv', 'readwrite');
+        tx.objectStore('kv').delete(key);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    },
   };
 
-  // Network-first RPC: persist good responses, serve the last good copy offline.
+  // Network-first RPC: persist good responses, serve the last good copy when
+  // the NETWORK fails. An authoritative null (e.g. an unpublished experience)
+  // is returned as null and purges the stale offline copy — otherwise a draft
+  // would keep resurrecting from IndexedDB on devices that saw it when public.
   async function rpcCached(fn, fnArgs, cacheKey) {
     try {
       const { data, error } = await db.rpc(fn, fnArgs);
-      if (error || data == null) throw error || new Error('empty RPC response');
+      if (error) throw error;
+      if (data == null) {
+        idb.del(cacheKey).catch(() => {});
+        return null;
+      }
       idb.set(cacheKey, data).catch(() => {});
       return data;
     } catch (e) {
