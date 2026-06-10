@@ -2124,9 +2124,31 @@
   }
 
   async function bootstrap() {
-    const slug = new URLSearchParams(location.search).get('experience') || 'default';
+    let slug = new URLSearchParams(location.search).get('experience');
+    let config = null;
+
+    if (slug) {
+      config = await rpcCached('get_experience_config', { p_slug: slug }, 'config:' + slug);
+    } else {
+      // No explicit experience: try the conventional 'default' slug, then fall
+      // back to the first public experience (e.g. when 'default' is a draft).
+      slug = 'default';
+      config = await rpcCached('get_experience_config', { p_slug: slug }, 'config:' + slug);
+      if (!config) {
+        try {
+          // Same query shape as initExperiencePicker so offline gets the
+          // service worker's cached copy of this exact request.
+          const { data } = await db.from('experiences')
+            .select('slug, title').eq('is_public', true).order('title');
+          if (data && data.length) {
+            slug = data[0].slug;
+            config = await rpcCached('get_experience_config', { p_slug: slug }, 'config:' + slug);
+          }
+        } catch (e) { /* offline with nothing cached — fall through to error */ }
+      }
+    }
+
     initExperiencePicker(slug);  // fire-and-forget; independent of map load
-    const config = await rpcCached('get_experience_config', { p_slug: slug }, 'config:' + slug);
 
     if (!config) {
       document.getElementById('loading-screen').classList.add('fade-out');
