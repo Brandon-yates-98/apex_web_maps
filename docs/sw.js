@@ -19,7 +19,8 @@ const SHELL = `apex-shell-${VERSION}`;
 const CDN = `apex-cdn-${VERSION}`;
 const DATA = `apex-data-${VERSION}`;
 const MEDIA = `apex-media-${VERSION}`;
-const ALL_CACHES = [SHELL, CDN, DATA, MEDIA];
+const TILES = `apex-tiles-${VERSION}`;
+const ALL_CACHES = [SHELL, CDN, DATA, MEDIA, TILES];
 
 const CDN_PRECACHE = [
   'https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css',
@@ -100,6 +101,13 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.hostname === 'events.mapbox.com') return;
+
+  // Open-source basemap tiles (OpenTopoMap/OSM) — unlike Mapbox tiles, these
+  // may be cached; "Save offline" prefetches the experience area into here.
+  if (url.hostname.endsWith('tile.opentopomap.org') || url.hostname === 'tile.openstreetmap.org') {
+    event.respondWith(cacheFirst(TILES, req));
+    return;
+  }
 
   if (CDN_HOSTS.has(url.hostname)) {
     event.respondWith(cacheFirst(CDN, req));

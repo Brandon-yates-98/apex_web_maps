@@ -1496,15 +1496,29 @@
   }
 
   // ── Map init ─────────────────────────────────────────────────
-  // Minimal local style used when the Mapbox basemap can't be fetched
-  // (offline): a plain background so the experience overlays still render.
-  // Mapbox tiles are never cached (TOS), so offline = data on dark canvas.
+  // Offline basemap: open-source raster tiles (OpenTopoMap — OSM data with
+  // contours, CC-BY-SA). Unlike Mapbox tiles these MAY be cached for offline
+  // use; "Save offline" prefetches the experience area into the SW tile cache.
+  // One fixed subdomain so cache keys always match the style's requests.
+  const OFFLINE_TILE_URL = 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png';
+  const OFFLINE_TILE_MAXZOOM = 15; // raster overzooms past this; also respects server policy
   const OFFLINE_STYLE = {
     version: 8,
     name: 'apex-offline',
     glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
-    sources: {},
-    layers: [{ id: 'offline-bg', type: 'background', paint: { 'background-color': '#16201a' } }],
+    sources: {
+      'offline-tiles': {
+        type: 'raster',
+        tiles: [OFFLINE_TILE_URL],
+        tileSize: 256,
+        maxzoom: OFFLINE_TILE_MAXZOOM,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, SRTM | © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)',
+      },
+    },
+    layers: [
+      { id: 'offline-bg', type: 'background', paint: { 'background-color': '#16201a' } },
+      { id: 'offline-tiles', type: 'raster', source: 'offline-tiles' },
+    ],
   };
 
   const map = new mapboxgl.Map({
@@ -2232,6 +2246,60 @@
     document.getElementById('ios-install-tip').style.display = 'block';
   }
 
+  // ── Offline basemap tile prefetch ────────────────────────────
+  function lng2tile(lng, z) { return Math.floor((lng + 180) / 360 * 2 ** z); }
+  function lat2tile(lat, z) {
+    const r = lat * Math.PI / 180;
+    return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z);
+  }
+
+  // Experience bounds → [w, s, e, n]; falls back to the loaded data's bbox,
+  // then to the current viewport.
+  function offlineBounds() {
+    const b = experienceConfig && experienceConfig.experience && experienceConfig.experience.bounds;
+    if (b) {
+      const f = Array.isArray(b[0]) ? [b[0][0], b[0][1], b[1][0], b[1][1]] : b;
+      if (f.length === 4 && f.every(v => typeof v === 'number')) return f;
+    }
+    let w = 180, s = 90, e = -180, n = -90, any = false;
+    const visit = c => {
+      if (typeof c[0] === 'number') {
+        any = true;
+        w = Math.min(w, c[0]); e = Math.max(e, c[0]);
+        s = Math.min(s, c[1]); n = Math.max(n, c[1]);
+      } else c.forEach(visit);
+    };
+    Object.values(layerCache).forEach(fc => (fc.features || []).forEach(f => f.geometry && visit(f.geometry.coordinates)));
+    if (any) return [w - 0.02, s - 0.02, e + 0.02, n + 0.02];
+    const v = map.getBounds();
+    return [v.getWest(), v.getSouth(), v.getEast(), v.getNorth()];
+  }
+
+  // Tile URLs covering the bounds from z8 down to OFFLINE_TILE_MAXZOOM,
+  // trimming the deepest zooms to stay under the cap — OpenTopoMap is a
+  // volunteer-run service; a bounded experience area stays well-mannered.
+  function enumerateTiles(bounds, cap = 1200) {
+    const [w, s, e, n] = bounds;
+    const count = mz => {
+      let t = 0;
+      for (let z = 8; z <= mz; z++) {
+        t += (lng2tile(e, z) - lng2tile(w, z) + 1) * (lat2tile(s, z) - lat2tile(n, z) + 1);
+      }
+      return t;
+    };
+    let maxZ = OFFLINE_TILE_MAXZOOM;
+    while (maxZ > 10 && count(maxZ) > cap) maxZ--;
+    const tiles = [];
+    for (let z = 8; z <= maxZ; z++) {
+      for (let x = lng2tile(w, z); x <= lng2tile(e, z); x++) {
+        for (let y = lat2tile(n, z); y <= lat2tile(s, z); y++) {
+          tiles.push(OFFLINE_TILE_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y));
+        }
+      }
+    }
+    return tiles;
+  }
+
   // "Save for offline": the experience config + layer GeoJSON are already in
   // IndexedDB (rpcCached) and the shell/libs in the SW caches — this makes the
   // save explicit: pin storage, re-cache the page, and prefetch every photo.
@@ -2278,7 +2346,19 @@
         status.textContent = `Saving photos… ${Math.min(i + BATCH, urls.length)} / ${urls.length}`;
       }
 
-      status.textContent = `Saved — this map now works offline${urls.length ? ` (${done} of ${urls.length} photos)` : ''}. The basemap still needs signal; your trails, climbs & points stay visible.`;
+      // Prefetch the open-source basemap tiles for this experience's area —
+      // these render via OFFLINE_STYLE when there's no signal.
+      const tiles = enumerateTiles(offlineBounds());
+      let tilesDone = 0;
+      const TILE_BATCH = 4;
+      for (let i = 0; i < tiles.length; i += TILE_BATCH) {
+        await Promise.allSettled(tiles.slice(i, i + TILE_BATCH).map(u =>
+          fetch(u).then(r => { if (r.ok) tilesDone++; })
+        ));
+        status.textContent = `Saving offline basemap… ${Math.min(i + TILE_BATCH, tiles.length)} / ${tiles.length} tiles`;
+      }
+
+      status.textContent = `Saved — this map now works fully offline: data${urls.length ? `, ${done} photos` : ''}, and ${tilesDone} basemap tiles covering this area.`;
       status.classList.add('ok');
     } catch (err) {
       status.textContent = 'Could not finish saving — check your connection and try again.';
