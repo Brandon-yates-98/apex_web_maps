@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
 compute_sector_boundaries.py
-Compute a boundary polygon for every climbing sector (an area that is the
-immediate parent of at least one route/boulder) from its climbs' coordinates,
-and emit a SQL migration that loads them as the `climbing_sectors` layer.
+Compute a boundary polygon for each top-level climbing SECTOR GROUP and emit
+a SQL migration that loads them as the `climbing_sectors` layer.
 
-Shape: convex hull of the sector's climbs, buffered ~35 m with round joins
-(single climbs become circles), computed in a locally-scaled space so the
-buffer is metrically round at Devil's Lake latitude, then lightly simplified.
+Grouping (matches the OpenBeta hierarchy at Devil's Lake):
+  - the top-level areas (East Bluff 01-08, West Bluff 01-07, ...) one each,
+  - EXCEPT umbrella areas whose climbs span a huge extent (Devil's Lake
+    Bouldering: 7.4 km) — those descend one level to their children,
+  - and non-geographic areas (Linkups/Contrivances: full-park link-ups)
+    are excluded entirely.
+  → ~28 clean polygons instead of one per leaf wall.
+
+Shape: concave hull of the group's climbs (follows the bluff line instead of
+ballooning across the lake), buffered ~55 m with round joins, computed in a
+latitude-corrected space so curves are metrically round, lightly simplified.
 
 Each polygon carries the same OpenBeta association properties as the area
 markers (area_id / parent_id / area_path), so the public map's climb lists,
@@ -24,6 +31,7 @@ import json
 import math
 import urllib.request
 
+from shapely import concave_hull
 from shapely.geometry import MultiPoint, mapping
 from shapely.affinity import scale as shp_scale
 
@@ -34,8 +42,11 @@ ANON_KEY = (
     "cCI6MjA5NTAwNTYwOX0.HD9iIKp267i3t2csvLA68TBZ4ASDBL14xznlSQumn30"
 )
 
-BUFFER_DEG = 35 / 111_000          # ~35 m in latitude degrees
-SIMPLIFY_DEG = 4 / 111_000         # ~4 m — keeps vertices low, shape smooth
+BUFFER_DEG = 55 / 111_000          # ~55 m in latitude degrees
+SIMPLIFY_DEG = 6 / 111_000         # ~6 m — keeps vertices low, shape smooth
+CONCAVE_RATIO = 0.45               # 0 = max concave, 1 = convex hull
+SPLIT_EXTENT_KM = 1.8              # umbrella areas wider than this descend a level
+EXCLUDE_NAMES = {"Linkups, Contrivances, Oddities and Triflings"}  # not geographic
 OUT_SQL = "migrations/015_climbing_sectors.sql"
 OUT_PREVIEW = "_sectors_preview.geojson"
 
@@ -57,32 +68,60 @@ def main():
     print(f"routes={len(routes)} boulders={len(boulders)} areas={len(areas)}")
 
     area_by_id = {}
+    children = {}
     for f in areas:
         p = f["properties"]
-        if p.get("area_id"):
-            area_by_id[p["area_id"]] = p
+        aid = p.get("area_id")
+        if not aid:
+            continue
+        area_by_id[aid] = p
+        par = p.get("parent_id") or ""
+        children.setdefault(par, []).append(aid)
 
-    # Group climb coordinates by immediate parent sector
-    by_sector = {}
+    # Climb coordinates per area SUB-TREE (a climb counts toward every
+    # ancestor in its area_path), so a group polygon covers all its walls.
+    by_subtree = {}
     for f in routes + boulders:
         p = f["properties"]
-        aid = p.get("area_id")
-        if not aid or f["geometry"]["type"] != "Point":
+        if f["geometry"]["type"] != "Point":
             continue
-        by_sector.setdefault(aid, []).append(tuple(f["geometry"]["coordinates"]))
+        for aid in set(p.get("area_path") or []):
+            by_subtree.setdefault(aid, []).append(tuple(f["geometry"]["coordinates"]))
+
+    def extent_km(coords):
+        if len(coords) < 2:
+            return 0.0
+        xs = [c[0] for c in coords]
+        ys = [c[1] for c in coords]
+        return max((max(xs) - min(xs)) * 81, (max(ys) - min(ys)) * 111)
+
+    # Group selection: top-level areas; oversized umbrellas descend one level.
+    roots = [aid for aid in area_by_id if (area_by_id[aid].get("parent_id") or "") not in area_by_id]
+    groups = []
+    for aid in roots:
+        if area_by_id[aid].get("name") in EXCLUDE_NAMES:
+            continue
+        coords = by_subtree.get(aid, [])
+        if not coords:
+            continue
+        if extent_km(coords) > SPLIT_EXTENT_KM and children.get(aid):
+            groups.extend(c for c in children[aid] if by_subtree.get(c))
+        else:
+            groups.append(aid)
 
     lat0 = 43.43
     kx = math.cos(math.radians(lat0))   # lon degrees are shorter than lat degrees
 
     features = []
-    for aid, coords in sorted(by_sector.items()):
-        meta = area_by_id.get(aid)
-        if meta is None:
-            continue  # climb references an area that has no marker — skip
+    for aid in sorted(groups, key=lambda a: area_by_id[a].get("name") or ""):
+        meta = area_by_id[aid]
+        coords = by_subtree[aid]
         pts = MultiPoint(list(set(coords)))
-        # locally-scaled space → metric-ish round buffer → back to degrees
+        # locally-scaled space → metric-ish round buffer → back to degrees.
+        # Concave hull follows the bluff line; convex fallback for tiny sets.
         scaled = shp_scale(pts, xfact=kx, yfact=1.0, origin=(0, 0))
-        poly = scaled.convex_hull.buffer(BUFFER_DEG, quad_segs=12).simplify(SIMPLIFY_DEG)
+        hull = concave_hull(scaled, ratio=CONCAVE_RATIO) if len(pts.geoms) >= 4 else scaled.convex_hull
+        poly = hull.buffer(BUFFER_DEG, quad_segs=12).simplify(SIMPLIFY_DEG)
         poly = shp_scale(poly, xfact=1.0 / kx, yfact=1.0, origin=(0, 0))
         features.append({
             "type": "Feature",
@@ -98,7 +137,8 @@ def main():
             },
             "custom_data": {"openbeta_id": aid},
         })
-    print(f"sectors with boundaries: {len(features)}")
+        print(f"  {meta.get('name'):<50} climbs={len(coords):>5}")
+    print(f"sector groups with boundaries: {len(features)}")
 
     with open(OUT_PREVIEW, "w", encoding="utf-8") as f:
         json.dump({"type": "FeatureCollection",
