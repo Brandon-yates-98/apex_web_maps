@@ -473,6 +473,13 @@
     }
     .popup-directions-btn:hover { filter: brightness(1.08); }
     .popup-directions-btn i { font-size: 11px; }
+    .popup-photos {
+      display: flex; gap: 5px; overflow-x: auto;
+      margin: 2px 0 6px; padding-bottom: 3px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .popup-photos a { flex: 0 0 auto; }
+    .popup-photos img { height: 76px; border-radius: 6px; display: block; }
 
     /* ─── On-map basemap switcher (traditional tile thumbnail) ─── */
     #basemap-switcher {
@@ -1526,6 +1533,15 @@
       .slice(0, 9)
       .map(([k, v]) => `<div class="popup-row"><span class="popup-label">${fmtKey(k)}</span><span class="popup-value">${fmtVal(k, v)}</span></div>`)
       .join('');
+
+    // Feature photos (editor uploads) — scrollable strip, tap to open full size
+    let photos = props.photos;
+    if (typeof photos === 'string') { try { photos = JSON.parse(photos); } catch { photos = []; } }
+    if (!Array.isArray(photos)) photos = [];
+    const photosHTML = photos.length
+      ? `<div class="popup-photos">${photos.slice(0, 12).map(u =>
+          `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" loading="lazy" alt="" /></a>`).join('')}</div>`
+      : '';
     // OpenBeta area association: areas get a "show climbs" button, climbs get
     // a chip linking back to their area. Both call selectClimbArea (wired below).
     let climbAssocHTML = '';
@@ -1546,8 +1562,9 @@
         <span class="popup-badge" style="background:${cfg.color}">${badgeText}</span>
       </div>
       <div class="popup-body">
+        ${photosHTML}
         ${customHTML}
-        ${rows || (!customHTML ? '<div class="popup-empty">No additional attributes</div>' : '')}
+        ${rows || (!customHTML && !photosHTML ? '<div class="popup-empty">No additional attributes</div>' : '')}
         ${climbAssocHTML}
         ${customData.openbeta_id && sourceKey.startsWith('climbing_')
           ? `<a href="${sourceKey === 'climbing_areas'

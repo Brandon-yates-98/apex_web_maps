@@ -122,6 +122,38 @@
       transition: color 0.15s, border-color 0.15s;
     }
     .layer-toggle-all:hover { color: #9bc23c; border-color: rgba(155,194,60,0.7); }
+
+    /* ─── Storage usage meter ─── */
+    #storage-meter { margin-top: auto; padding-top: 12px; }
+    .storage-bar {
+      height: 6px; border-radius: 3px; overflow: hidden;
+      background: rgba(255,255,255,0.08);
+    }
+    #storage-bar-fill {
+      height: 100%; width: 0; border-radius: 3px;
+      background: #9bc23c; transition: width 0.5s ease;
+    }
+    #storage-bar-fill.warn { background: #e6a23c; }
+    #storage-bar-fill.crit { background: #e35d5d; }
+    .storage-label { font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 5px; }
+
+    /* ─── Feature photos ─── */
+    #feat-photo-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+    .photo-thumb {
+      position: relative; width: 56px; height: 56px;
+      border-radius: 5px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-thumb .pt-del {
+      position: absolute; top: 1px; right: 1px;
+      width: 16px; height: 16px; line-height: 14px;
+      border-radius: 50%; border: none; cursor: pointer;
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-size: 11px; text-align: center; padding: 0;
+    }
+    .photo-thumb .pt-del:hover { background: #e35d5d; }
+    .photo-upload-status { font-size: 9.5px; color: rgba(255,255,255,0.4); margin-top: 4px; min-height: 12px; }
     .layer-group-label {
       font-size: 7px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase;
       color: rgba(155,194,60,0.4); padding: 8px 2px 3px;
@@ -410,6 +442,11 @@
         <div class="panel-placeholder">Select an experience</div>
       </div>
     </div>
+    <div class="panel-section" id="storage-meter">
+      <div class="panel-section-title">Storage</div>
+      <div class="storage-bar"><div id="storage-bar-fill"></div></div>
+      <div id="storage-label" class="storage-label">checking…</div>
+    </div>
     <div class="panel-footer">
       <img class="panel-footer-logo" src="https://apexadventurealliance.com/wp-content/uploads/2025/04/ApexPrimaryLogoFinal-271x300.png" alt="" />
       <div class="panel-footer-tagline">Editor Mode</div>
@@ -532,6 +569,13 @@
             <input class="rp-input" id="feat-name" type="text" placeholder="Feature name" />
           </div>
           <div id="dynamic-fields"></div>
+          <div>
+            <label class="rp-label">Photos <span style="color:rgba(255,255,255,0.25);font-weight:400;text-transform:none">— shown in the map popup</span></label>
+            <div id="feat-photo-strip"></div>
+            <button class="btn-outline btn-sm" id="add-photos-btn" style="width:100%"><i class="fa-solid fa-camera"></i> Add Photos</button>
+            <input id="photo-file-input" type="file" accept="image/*" multiple style="display:none" />
+            <div id="photo-upload-status" class="photo-upload-status"></div>
+          </div>
           <button class="btn-primary" id="save-feature-btn" style="width:100%"><i class="fa-solid fa-floppy-disk"></i> Save Feature</button>
         </div>
       </div>
@@ -1767,12 +1811,111 @@
       const val = input.dataset.base ? feature.properties[key] : cd[key];
       input.value = (val != null) ? val : '';
     });
+    // Photos: the column arrives as an array via get_layer_geojson, but may be
+    // a JSON string on features round-tripped through mapbox-gl-draw.
+    let ph = feature.properties.photos;
+    if (typeof ph === 'string') { try { ph = JSON.parse(ph); } catch { ph = []; } }
+    formPhotos = Array.isArray(ph) ? ph.filter(u => typeof u === 'string') : [];
+    renderPhotoStrip();
   }
 
   function hideFeatureForm() {
     selectedDrawFeatureId = null;
+    formPhotos = [];
     document.getElementById('feature-attr-panel').style.display = '';
     document.getElementById('feature-attr-form').style.display = 'none';
+  }
+
+  // ── Feature photos: compress in-browser → Supabase Storage ───
+  // Originals never leave the device at full size: longest edge capped and
+  // re-encoded (WebP, JPEG fallback) so the 1 GB free tier holds thousands
+  // of photos instead of ~200 camera originals.
+  let formPhotos = [];   // photo URLs for the feature currently in the form
+
+  function renderPhotoStrip() {
+    const strip = document.getElementById('feat-photo-strip');
+    strip.innerHTML = '';
+    formPhotos.forEach((url, i) => {
+      const t = document.createElement('div');
+      t.className = 'photo-thumb';
+      t.innerHTML = `<img src="${url}" alt="" loading="lazy" /><button class="pt-del" title="Remove photo">×</button>`;
+      t.querySelector('.pt-del').addEventListener('click', () => {
+        formPhotos.splice(i, 1);
+        renderPhotoStrip();
+      });
+      strip.appendChild(t);
+    });
+  }
+
+  async function compressImage(file, maxDim = 1600) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    let blob = await new Promise(res => canvas.toBlob(res, 'image/webp', 0.82));
+    if (!blob || blob.type !== 'image/webp') {
+      blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    }
+    if (!blob) throw new Error('encode failed');
+    return { blob, ext: blob.type === 'image/webp' ? 'webp' : 'jpg' };
+  }
+
+  document.getElementById('add-photos-btn').addEventListener('click', () => {
+    document.getElementById('photo-file-input').click();
+  });
+
+  document.getElementById('photo-file-input').addEventListener('change', async e => {
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    const status = document.getElementById('photo-upload-status');
+    const source = document.getElementById('draw-target-select').value || 'misc';
+    let done = 0, failed = 0;
+    for (const file of files) {
+      status.textContent = `Uploading ${done + failed + 1} / ${files.length}…`;
+      try {
+        const { blob, ext } = await compressImage(file);
+        const path = `${source}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await db.storage.from('photos')
+          .upload(path, blob, { contentType: blob.type, cacheControl: '31536000' });
+        if (error) throw error;
+        formPhotos.push(db.storage.from('photos').getPublicUrl(path).data.publicUrl);
+        renderPhotoStrip();
+        done++;
+      } catch (err) {
+        failed++;
+        console.warn('photo upload failed:', file.name, err);
+      }
+    }
+    status.textContent = `${done} uploaded${failed ? `, ${failed} failed (unsupported format?)` : ''} — Save Feature to keep`;
+    refreshStorageMeter();
+  });
+
+  // ── Storage usage meter (Supabase free tier: 1 GB) ───────────
+  const STORAGE_LIMIT_BYTES = 1024 ** 3;
+  function fmtBytes(b) {
+    if (b >= 1024 ** 3) return (b / 1024 ** 3).toFixed(2) + ' GB';
+    if (b >= 1024 ** 2) return (b / 1024 ** 2).toFixed(1) + ' MB';
+    return Math.max(1, Math.round(b / 1024)) + ' KB';
+  }
+  async function refreshStorageMeter() {
+    const label = document.getElementById('storage-label');
+    const fill = document.getElementById('storage-bar-fill');
+    const { data, error } = await db.rpc('storage_usage');
+    if (error || data == null) {
+      label.textContent = 'usage unavailable — run migrations/014';
+      return;
+    }
+    const used = Number(data);
+    const pct = Math.min(100, (used / STORAGE_LIMIT_BYTES) * 100);
+    fill.style.width = Math.max(pct, used > 0 ? 1.5 : 0) + '%';
+    fill.classList.toggle('crit', pct >= 90);
+    fill.classList.toggle('warn', pct >= 70 && pct < 90);
+    label.textContent = `${fmtBytes(used)} of 1 GB (${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%)`;
   }
 
   // ── Field schema management (layer cards) ────────────────────
@@ -2016,6 +2159,14 @@
     feature.properties.custom_data = JSON.stringify(customData);
     draw.setFeatureProperty(feature.id, 'name', name);
     await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+    // Photos live in the osm_geometries.photos COLUMN (get_layer_geojson
+    // serves the column, not properties.photos) — persist via dedicated RPC.
+    const photoKey = String(feature.properties.id || feature.properties._draw_id || '');
+    if (photoKey) {
+      const { error: phErr } = await db.rpc('set_feature_photos',
+        { p_source: source, p_key: photoKey, p_photos: formPhotos });
+      if (phErr) toast('Photos not saved: ' + phErr.message, true);
+    }
     delete layerCache[source];
     await refreshCustomSource(source);
     toast('Feature saved');
@@ -2082,6 +2233,7 @@
     renderDynamicFields([]); // show legacy description field until a draw target is selected
 
     await loadExperiences();
+    refreshStorageMeter();   // fire-and-forget; meter shows a hint until 014 is run
 
     const el = document.getElementById('loading-screen');
     el.classList.add('fade-out');
