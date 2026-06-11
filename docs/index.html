@@ -1890,17 +1890,56 @@
   document.getElementById('basemap-switcher').addEventListener('click', () => setBasemap(basemapIdx + 1));
   renderBasemapSwitcher();
 
-  // Fallback white circle for any Maki icon name not found in the current style sprite
-  map.on('styleimagemissing', e => {
-    const size = 15;
+  // Custom marker glyphs + fallback for any icon name the style sprite lacks.
+  // Drawn in canvas (no sprite dependency) so they survive basemap switches
+  // and render offline. White on transparent — they sit on the colored circle.
+  function drawMapGlyph(id) {
+    const S = 64; // drawn 4x, registered at pixelRatio 4 → crisp 16px logical
     const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size;
+    canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    map.addImage(e.id, { width: size, height: size, data: ctx.getImageData(0, 0, size, size).data });
+    if (id === 'apex-boulder') {
+      // rounded freestanding rock with a crack
+      ctx.beginPath();
+      ctx.moveTo(10, 46);
+      ctx.bezierCurveTo(5, 30, 16, 15, 32, 13);
+      ctx.bezierCurveTo(48, 11, 59, 26, 56, 41);
+      ctx.bezierCurveTo(54, 49, 46, 53, 34, 53);
+      ctx.bezierCurveTo(22, 53, 12, 53, 10, 46);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(31, 14);
+      ctx.quadraticCurveTo(36, 30, 28, 52);
+      ctx.stroke();
+    } else if (id === 'apex-cliff') {
+      // tall crag tooth with strata lines on the face
+      ctx.beginPath();
+      ctx.moveTo(13, 54);
+      ctx.lineTo(20, 15);
+      ctx.lineTo(31, 9);
+      ctx.lineTo(41, 13);
+      ctx.lineTo(51, 54);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(22, 28); ctx.lineTo(38, 26);
+      ctx.moveTo(22, 40); ctx.lineTo(44, 38);
+      ctx.stroke();
+    } else {
+      // unknown icon → plain circle
+      ctx.beginPath();
+      ctx.arc(S / 2, S / 2, S / 2 - 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return { width: S, height: S, data: ctx.getImageData(0, 0, S, S).data };
+  }
+  map.on('styleimagemissing', e => {
+    if (!map.hasImage(e.id)) map.addImage(e.id, drawMapGlyph(e.id), { pixelRatio: 4 });
   });
 
   // ── Layer renderer: adds Mapbox sources + layers for one experience layer config
