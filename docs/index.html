@@ -914,8 +914,11 @@
   let trailHoverId = null;
   let interactionsRegistered = false;
 
-  const CLIMBING_SOURCES = ['climbing_routes', 'climbing_boulders', 'climbing_areas'];
-  const CLIMB_SOURCES = ['climbing_routes', 'climbing_boulders'];   // climbs only (no areas)
+  const CLIMBING_SOURCES = ['climbing_routes', 'climbing_boulders', 'climbing_areas', 'climbing_sectors'];
+  const CLIMB_SOURCES = ['climbing_routes', 'climbing_boulders'];   // climbs only (no areas/sectors)
+  // Sources whose features ARE areas (marker points + computed boundary
+  // polygons share the same area_id/area_path association).
+  const AREA_SOURCES = new Set(['climbing_areas', 'climbing_sectors']);
   const climbFilter = { search: '', area: 'all', types: new Set(), grade: 'all' };
 
   // ── OpenBeta area ↔ climbs association ────────────────────────
@@ -1168,11 +1171,11 @@
       if (!hasFilter) {
         src.setData(cached);
         total += cached.features.length;
-        if (srcKey !== 'climbing_areas') climbTotal += cached.features.length;
+        if (CLIMB_SOURCES.includes(srcKey)) climbTotal += cached.features.length;
         return;
       }
 
-      const isAreaLayer = srcKey === 'climbing_areas';
+      const isAreaLayer = AREA_SOURCES.has(srcKey);
       const filtered = cached.features.filter(f => {
         const p = f.properties;
         if (search && !(p.name || '').toLowerCase().includes(searchLow)) return false;
@@ -1190,7 +1193,7 @@
 
       src.setData({ type: 'FeatureCollection', features: filtered });
       total += filtered.length;
-      if (srcKey !== 'climbing_areas') climbTotal += filtered.length;
+      if (CLIMB_SOURCES.includes(srcKey)) climbTotal += filtered.length;
     });
 
     const countEl = document.getElementById('cf-result-count');
@@ -1643,6 +1646,7 @@
     // stats, description) instead of generic label/value rows — the keys
     // rendered here are suppressed from the row sections below.
     const isClimb = sourceKey === 'climbing_routes' || sourceKey === 'climbing_boulders';
+    const isAreaSrc = AREA_SOURCES.has(sourceKey);
     let climbStatsHTML = '';
     if (isClimb) {
       const g = props.grade || '';
@@ -1657,7 +1661,7 @@
         ${customData.description ? `<div class="climb-desc">${escapeHtml(String(customData.description))}</div>` : ''}`;
       ['grade', 'route_type', 'length_ft', 'fa', 'description', 'area_name', 'area_id', 'area_path', 'depth']
         .forEach(k => skipInRows.add(k));
-    } else if (sourceKey === 'climbing_areas') {
+    } else if (isAreaSrc) {
       ['climb_count', 'depth', 'area_id', 'parent_id', 'area_path', 'description'].forEach(k => skipInRows.add(k));
       if (customData.description) {
         climbStatsHTML = `<div class="climb-desc">${escapeHtml(String(customData.description))}</div>`;
@@ -1708,7 +1712,7 @@
     let climbAssocHTML = '';
     let climbListHTML = '';
     let climbNavHTML = '';
-    if (sourceKey === 'climbing_areas') {
+    if (isAreaSrc) {
       const ak = areaKeyOf(props);
       const climbs = ak ? climbsForArea(ak) : [];
       if (ak && climbs.length) {
@@ -1771,7 +1775,7 @@
         ${climbListHTML}
         ${climbAssocHTML}
         ${customData.openbeta_id && sourceKey.startsWith('climbing_')
-          ? `<a href="${sourceKey === 'climbing_areas'
+          ? `<a href="${isAreaSrc
               ? 'https://openbeta.io/areas/' + customData.openbeta_id
               : 'https://openbeta.io/climbs/' + customData.openbeta_id
             }" target="_blank" rel="noopener" class="popup-ob-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> View on OpenBeta</a>`
@@ -1993,8 +1997,9 @@
     } else {
       // polygon or mixed — add fill, outline, and circle sub-layers
       map.addSource(key, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      const dsFillOpacity = layerCfg.default_style && layerCfg.default_style.fill_opacity;
       const fillSpec = { id: key+'-fill', type: 'fill', source: key,
-        paint: { 'fill-color': color, 'fill-opacity': 0.3 },
+        paint: { 'fill-color': color, 'fill-opacity': dsFillOpacity != null ? dsFillOpacity : 0.3 },
         filter: ['==', '$type', 'Polygon'] };
       if (filter) fillSpec.filter = ['all', fillSpec.filter, filter];
       map.addLayer(fillSpec, firstSymbol);
