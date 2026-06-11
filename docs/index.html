@@ -365,6 +365,25 @@
     }
     .cf-reset-btn:hover { background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.3); color: rgba(231,76,60,0.75); }
 
+    /* Floating clear-filter pill (top-center of the map) */
+    #climb-filter-chip {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 250; max-width: 70%;
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px; border-radius: 18px; border: 1px solid rgba(155,194,60,0.5);
+      background: rgba(14,22,12,0.92); color: #cfe3a8;
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+    }
+    #climb-filter-chip i { color: #9bc23c; font-size: 10px; }
+    #climb-filter-chip #cfc-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #climb-filter-chip .cfc-x {
+      font-size: 14px; font-weight: 800; color: #e08c7d; line-height: 1;
+    }
+    #climb-filter-chip:hover { border-color: rgba(231,76,60,0.6); }
+    #climb-filter-chip:hover .cfc-x { color: #e74c3c; }
+
     /* ── Campsite drive-time sliders ── */
     #camp-filter-panel { display: none; }
     .df-row { margin-bottom: 12px; }
@@ -806,6 +825,11 @@
     <button id="basemap-switcher" title="Switch basemap" aria-label="Switch basemap">
       <span id="bms-label">Satellite</span>
     </button>
+    <!-- Floating clear-filter pill — the always-visible way out of a climbing
+         filter, even on mobile where the sidebar drawer is closed -->
+    <button id="climb-filter-chip" style="display:none" title="Clear climbing filters">
+      <i class="fa-solid fa-filter"></i> <span id="cfc-label"></span> <span class="cfc-x">×</span>
+    </button>
   </div>
 
 </main>
@@ -1134,6 +1158,7 @@
     const searchLow = search.toLowerCase();
     const hasFilter = search || area !== 'all' || types.size > 0 || grade !== 'all';
     let total = 0;
+    let climbTotal = 0;   // routes + boulders only — what the clear-filter pill reports
 
     CLIMBING_SOURCES.forEach(srcKey => {
       const src = map.getSource(srcKey);
@@ -1143,6 +1168,7 @@
       if (!hasFilter) {
         src.setData(cached);
         total += cached.features.length;
+        if (srcKey !== 'climbing_areas') climbTotal += cached.features.length;
         return;
       }
 
@@ -1164,6 +1190,7 @@
 
       src.setData({ type: 'FeatureCollection', features: filtered });
       total += filtered.length;
+      if (srcKey !== 'climbing_areas') climbTotal += filtered.length;
     });
 
     const countEl = document.getElementById('cf-result-count');
@@ -1173,6 +1200,26 @@
       countEl.classList.toggle('show', !!hasFilter);
     }
     if (resetBtn) resetBtn.style.display = hasFilter ? '' : 'none';
+    updateClimbFilterChip(climbTotal);
+  }
+
+  // Floating pill mirroring the active climbing filter — without it, a filter
+  // applied from a popup is invisible (and on mobile, irreversible) because
+  // the sidebar panel with the reset lives in a closed drawer.
+  function updateClimbFilterChip(total) {
+    const chip = document.getElementById('climb-filter-chip');
+    if (!chip) return;
+    const { search, area, types, grade } = climbFilter;
+    const active = search || area !== 'all' || types.size > 0 || grade !== 'all';
+    if (!active) { chip.style.display = 'none'; return; }
+    const parts = [];
+    if (area !== 'all') parts.push((climbAreaNodes[canonicalAreaKey(area)] || {}).name || 'this area');
+    if (search) parts.push(`"${search}"`);
+    if (types.size) parts.push([...types].join('/'));
+    if (grade !== 'all') parts.push(grade);
+    document.getElementById('cfc-label').textContent =
+      `${total != null ? total + ' climbs' : 'Filtered'} · ${parts.join(' · ')}`;
+    chip.style.display = 'flex';
   }
 
   // ── Climbing filter init (called after data loads) ────────────
@@ -1289,6 +1336,12 @@
   // reveal + expand the climbing UI, filter to its sub-tree, and zoom to it.
   function selectClimbArea(areaKey) {
     if (areaKey !== 'all') areaKey = canonicalAreaKey(areaKey); // popups/markers may carry an alias id
+    // The experience must actually RENDER routes/boulders for an area filter
+    // to show anything — climb data may sit in layerCache (search loads it)
+    // without map layers existing. Filtering then would blank the map with
+    // nothing to show in return — just zoom to the area instead.
+    const canShowClimbs = CLIMB_SOURCES.some(s => map.getSource(s) && layerCache[s] && layerCache[s].features.length);
+    if (areaKey !== 'all' && !canShowClimbs) { zoomToClimbArea(areaKey); return; }
     climbFilter.area = areaKey;
     const sel = document.getElementById('cf-area');
     if (sel) sel.value = areaKey;
@@ -1313,8 +1366,23 @@
         if (climbAreaChain(f.properties).some(k => canonicalAreaKey(k) === want)) { b.extend(f.geometry.coordinates); n++; }
       });
     });
-    if (n) map.fitBounds(b, { padding: 80, maxZoom: 16 });
+    if (n) {
+      map.fitBounds(b, { padding: 80, maxZoom: 16 });
+      return;
+    }
+    // No climbs loaded for this area — fly to the area marker itself.
+    const areaFeat = (layerCache['climbing_areas'] || { features: [] }).features
+      .find(f => canonicalAreaKey(areaKeyOf(f.properties)) === want);
+    if (areaFeat && areaFeat.geometry.type === 'Point') {
+      map.flyTo({ center: areaFeat.geometry.coordinates, zoom: Math.max(map.getZoom(), 15) });
+    }
   }
+
+  // Clear-filter pill → reuse the panel's full reset (state + chip UI + re-render)
+  document.getElementById('climb-filter-chip').addEventListener('click', () => {
+    const reset = document.getElementById('cf-reset');
+    if (reset) reset.click();
+  });
 
   // ── Campsite filters ──────────────────────────────────────────
   // Max-value sliders over pois_camping properties (drive time to each shore +
@@ -1644,7 +1712,11 @@
       const ak = areaKeyOf(props);
       const climbs = ak ? climbsForArea(ak) : [];
       if (ak && climbs.length) {
-        climbAssocHTML = `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to ${climbs.length} climb${climbs.length === 1 ? '' : 's'}</button>`;
+        // Without rendered climb layers the button can only zoom — label it so.
+        const canShowClimbs = CLIMB_SOURCES.some(s => map.getSource(s));
+        climbAssocHTML = canShowClimbs
+          ? `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to ${climbs.length} climb${climbs.length === 1 ? '' : 's'}</button>`
+          : `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-magnifying-glass-location"></i> Zoom to this area</button>`;
         const nRoutes = climbs.filter(c => c.src === 'climbing_routes').length;
         const nBoulders = climbs.length - nRoutes;
         const breakdown = [
