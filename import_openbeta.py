@@ -231,6 +231,36 @@ def upsert_batch(source, features):
             time.sleep(0.3)  # brief pause every batch
 
 # ── Main ──────────────────────────────────────────────────────────────────
+# OpenBeta API quirk: climbs reached through nested children{} return
+# metadata.mp_id as null, but querying each wall DIRECTLY populates it.
+# Second pass: one query per wall, patch the rows.
+MP_WALL_Q = '''query($uuid: ID!) {
+  area(uuid: $uuid) { climbs { uuid metadata { mp_id } } }
+}'''
+
+def fetch_climb_mp_ids(rows):
+    walls = sorted({r['area_id'] for r in rows if not r.get('mp_id')})
+    print(f"\nFetching Mountain Project ids directly from {len(walls)} walls …")
+    mp = {}
+    for i, wall in enumerate(walls):
+        try:
+            d = gql(MP_WALL_Q, {'uuid': wall})
+            for c in ((d.get('area') or {}).get('climbs') or []):
+                mid = (c.get('metadata') or {}).get('mp_id')
+                if mid:
+                    mp[c['uuid']] = mid
+        except Exception as e:
+            print(f"  [WARN] mp_id fetch failed for wall {wall}: {e}")
+        if (i + 1) % 50 == 0:
+            print(f"    {i + 1}/{len(walls)} walls …")
+            time.sleep(0.3)
+    n = 0
+    for r in rows:
+        if not r.get('mp_id') and r['uuid'] in mp:
+            r['mp_id'] = mp[r['uuid']]
+            n += 1
+    print(f"  mp_id found for {n} climbs")
+
 def main():
     print("Fetching Devil's Lake area children …")
     top = gql(CHILDREN_Q, {'uuid': DEVILS_LAKE_UUID})['area']
@@ -280,6 +310,8 @@ def main():
             climb_counts[aid] = climb_counts.get(aid, 0) + 1
     for a in unique_areas:
         a['climb_count'] = climb_counts.get(a['uuid'], 0)
+
+    fetch_climb_mp_ids(all_routes + all_boulders)
 
     print(f"\n--- Summary ---")
     print(f"  Areas:    {len(unique_areas)}")
