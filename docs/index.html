@@ -1665,7 +1665,6 @@
       const parts = [];
       if (g) parts.push(`<span class="pcl-grade ${gradeBucketClass(g)}">${escapeHtml(g)}</span>`);
       types.forEach(t => parts.push(`<span class="climb-type-pill">${escapeHtml(t)}</span>`));
-      if (props.length_ft) parts.push(`<span class="climb-stat"><i class="fa-solid fa-ruler-vertical"></i> ${escapeHtml(String(props.length_ft))} ft</span>`);
       climbStatsHTML = `
         ${parts.length ? `<div class="climb-stats">${parts.join('')}</div>` : ''}
         ${props.fa ? `<div class="climb-fa"><i class="fa-solid fa-flag-checkered"></i> FA ${escapeHtml(String(props.fa))}</div>` : ''}
