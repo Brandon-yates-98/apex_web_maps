@@ -481,6 +481,52 @@
     .popup-photos a { flex: 0 0 auto; }
     .popup-photos img { height: 76px; border-radius: 6px; display: block; }
 
+    /* ─── Area ↔ climb popup navigation ─── */
+    .pcl-head {
+      font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
+      text-transform: uppercase; color: #7a8a5a; margin: 8px 0 4px;
+    }
+    .popup-climb-list {
+      max-height: 168px; overflow-y: auto;
+      border: 1px solid #e8e8e8; border-radius: 7px;
+      margin-bottom: 6px; background: #fff;
+    }
+    .pcl-row {
+      display: flex; align-items: center; gap: 7px;
+      width: 100%; padding: 6px 8px;
+      border: none; border-bottom: 1px solid #f3f3f3;
+      background: #fff; cursor: pointer;
+      font-family: inherit; font-size: 12px; text-align: left;
+    }
+    .pcl-row:last-of-type { border-bottom: none; }
+    .pcl-row:hover { background: #f4f8ec; }
+    .pcl-row i { color: #9bc23c; font-size: 11px; width: 14px; text-align: center; flex: 0 0 auto; }
+    .pcl-name {
+      flex: 1; min-width: 0; color: #333;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pcl-grade {
+      flex: 0 0 auto; font-size: 10px; font-weight: 700;
+      padding: 1px 7px; border-radius: 9px; color: #fff;
+    }
+    .g-easy { background: #27ae60; }
+    .g-mod  { background: #2980d9; }
+    .g-hard { background: #e67e22; }
+    .g-proj { background: #c0392b; }
+    .g-none { background: #a8b0b3; }
+    .pcl-more { font-size: 10.5px; color: #999; padding: 6px 8px; font-style: italic; }
+    .pcl-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+    .pcl-step {
+      width: 26px; height: 22px; flex: 0 0 auto;
+      border: 1px solid #ddd; border-radius: 5px;
+      background: #fff; color: #555; cursor: pointer; font-size: 10px;
+    }
+    .pcl-step:hover { background: #f4f8ec; border-color: #9bc23c; color: #557a1f; }
+    .pcl-nav-label {
+      flex: 1; text-align: center; font-size: 10.5px; color: #777;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
     /* ─── On-map basemap switcher (traditional tile thumbnail) ─── */
     #basemap-switcher {
       position: absolute; left: 12px; bottom: 12px; z-index: 5;
@@ -1542,18 +1588,50 @@
       ? `<div class="popup-photos">${photos.slice(0, 12).map(u =>
           `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" loading="lazy" alt="" /></a>`).join('')}</div>`
       : '';
-    // OpenBeta area association: areas get a "show climbs" button, climbs get
-    // a chip linking back to their area. Both call selectClimbArea (wired below).
+    // OpenBeta area association: areas get a "show climbs" button + an
+    // in-popup climb browser; climbs get an area chip and prev/next stepping
+    // through the same wall. selectClimbArea / flyToClimb wired in
+    // openFeaturePopup.
     let climbAssocHTML = '';
+    let climbListHTML = '';
+    let climbNavHTML = '';
     if (sourceKey === 'climbing_areas') {
       const ak = areaKeyOf(props);
-      const cnt = climbCountByKey[ak] != null ? climbCountByKey[ak] : (Number(props.climb_count) || 0);
-      if (ak && cnt > 0) {
-        climbAssocHTML = `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Show ${cnt} climb${cnt === 1 ? '' : 's'} here</button>`;
+      const climbs = ak ? climbsForArea(ak) : [];
+      if (ak && climbs.length) {
+        climbAssocHTML = `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to ${climbs.length} climb${climbs.length === 1 ? '' : 's'}</button>`;
+        const CAP = 60;
+        climbListHTML = `
+          <div class="pcl-head">Climbs here</div>
+          <div class="popup-climb-list">
+            ${climbs.slice(0, CAP).map(({ f, src }) => {
+              const p = f.properties;
+              const g = p.grade || '';
+              return `<button class="pcl-row" data-fsrc="${src}" data-fid="${escapeHtml(String(p.id))}">
+                <i class="fa-solid ${CLIMB_TYPE_ICON[src] || 'fa-location-dot'}"></i>
+                <span class="pcl-name">${escapeHtml(p.name || '(unnamed)')}</span>
+                <span class="pcl-grade ${gradeBucketClass(g)}">${escapeHtml(g) || '—'}</span>
+              </button>`;
+            }).join('')}
+            ${climbs.length > CAP ? `<div class="pcl-more">+ ${climbs.length - CAP} more — use the filter button above</div>` : ''}
+          </div>`;
       }
-    } else if ((sourceKey === 'climbing_routes' || sourceKey === 'climbing_boulders') && props.area_name) {
-      const ak = props.area_id || props.area_name;
-      climbAssocHTML = `<button class="popup-area-link" data-area-key="${escapeHtml(ak)}" title="Show this area's climbs"><i class="fa-solid fa-layer-group"></i> ${escapeHtml(props.area_name)}</button>`;
+    } else if (sourceKey === 'climbing_routes' || sourceKey === 'climbing_boulders') {
+      if (props.area_name) {
+        const ak = props.area_id || props.area_name;
+        climbAssocHTML = `<button class="popup-area-link" data-area-key="${escapeHtml(ak)}" title="Show this area's climbs"><i class="fa-solid fa-layer-group"></i> ${escapeHtml(props.area_name)}</button>`;
+      }
+      const sibs = climbSiblings(props);
+      const idx = sibs.findIndex(s => String(s.f.properties.id) === String(props.id));
+      if (idx !== -1 && sibs.length > 1) {
+        const prev = sibs[(idx - 1 + sibs.length) % sibs.length];
+        const next = sibs[(idx + 1) % sibs.length];
+        climbNavHTML = `<div class="pcl-nav">
+          <button class="pcl-step" data-fsrc="${prev.src}" data-fid="${escapeHtml(String(prev.f.properties.id))}" title="Previous climb on this wall"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="pcl-nav-label">${idx + 1} of ${sibs.length}${props.area_name ? ` · ${escapeHtml(props.area_name)}` : ''}</span>
+          <button class="pcl-step" data-fsrc="${next.src}" data-fid="${escapeHtml(String(next.f.properties.id))}" title="Next climb on this wall"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>`;
+      }
     }
 
     return `
@@ -1562,9 +1640,11 @@
         <span class="popup-badge" style="background:${cfg.color}">${badgeText}</span>
       </div>
       <div class="popup-body">
+        ${climbNavHTML}
         ${photosHTML}
         ${customHTML}
         ${rows || (!customHTML && !photosHTML ? '<div class="popup-empty">No additional attributes</div>' : '')}
+        ${climbListHTML}
         ${climbAssocHTML}
         ${customData.openbeta_id && sourceKey.startsWith('climbing_')
           ? `<a href="${sourceKey === 'climbing_areas'
@@ -2135,29 +2215,94 @@
       if (lid.endsWith('-glow') || lid.endsWith('-case') || lid.endsWith('-outline')) return;
       map.on('click', lid, (e) => {
         if (e.originalEvent._popupHandled) return;
-        const sourceKey = layerToSource[lid];
-        const feature = e.features[0];
-        const props = feature.properties;
-        const popup = new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: '290px' })
-          .setLngLat(e.lngLat)
-          .setHTML(buildPopupHTML(props, sourceKey))
-          .addTo(map);
-        const dirBtn = popup.getElement().querySelector('.popup-directions-btn');
-        if (dirBtn) dirBtn.addEventListener('click', () => {
-          const dest = featureCentroid(feature.geometry) || [e.lngLat.lng, e.lngLat.lat];
-          openDirections(dest);
-        });
-        // OpenBeta area association: jump to an area's climbs (from an area
-        // marker's "Show climbs" button or a climb's area chip).
-        const areaBtn = popup.getElement().querySelector('.popup-area-climbs-btn, .popup-area-link');
-        if (areaBtn) areaBtn.addEventListener('click', () => {
-          const key = areaBtn.getAttribute('data-area-key');
-          popup.remove();
-          if (key) selectClimbArea(key);
-        });
+        openFeaturePopup(e.features[0], layerToSource[lid], e.lngLat);
         e.originalEvent._popupHandled = true;
       });
     });
+  }
+
+  // Open a feature popup and wire its interactive parts. Used by map clicks
+  // and by in-popup navigation (area climb lists, prev/next stepping), which
+  // chain popups with a flyTo between them.
+  function openFeaturePopup(feature, sourceKey, lngLat) {
+    const popup = new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: '290px' })
+      .setLngLat(lngLat)
+      .setHTML(buildPopupHTML(feature.properties, sourceKey))
+      .addTo(map);
+    const el = popup.getElement();
+    const dirBtn = el.querySelector('.popup-directions-btn');
+    if (dirBtn) dirBtn.addEventListener('click', () => {
+      const dest = featureCentroid(feature.geometry)
+        || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]);
+      openDirections(dest);
+    });
+    // OpenBeta area association: jump to an area's climbs (from an area
+    // marker's "Show climbs" button or a climb's area chip).
+    const areaBtn = el.querySelector('.popup-area-climbs-btn, .popup-area-link');
+    if (areaBtn) areaBtn.addEventListener('click', () => {
+      const key = areaBtn.getAttribute('data-area-key');
+      popup.remove();
+      if (key) selectClimbArea(key);
+    });
+    // Climb list rows (area popups) + prev/next steppers (climb popups)
+    el.querySelectorAll('.pcl-row, .pcl-step').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const { fsrc, fid } = btn.dataset;
+        popup.remove();
+        flyToClimb(fsrc, fid);
+      });
+    });
+    return popup;
+  }
+
+  // ── Area ↔ climb popup navigation ─────────────────────────────
+  const CLIMB_TYPE_ICON = { climbing_routes: 'fa-person-climbing', climbing_boulders: 'fa-cube' };
+  const byClimbName = (a, b) =>
+    (a.f.properties.name || '').localeCompare(b.f.properties.name || '', undefined, { numeric: true, sensitivity: 'base' });
+
+  function gradeBucketClass(grade) {
+    if (!grade) return 'g-none';
+    if (gradeInBucket(grade, 'easy')) return 'g-easy';
+    if (gradeInBucket(grade, 'mod'))  return 'g-mod';
+    if (gradeInBucket(grade, 'hard')) return 'g-hard';
+    if (gradeInBucket(grade, 'proj')) return 'g-proj';
+    return 'g-none';
+  }
+
+  // Every climb in an area's sub-tree, naturally sorted by name.
+  function climbsForArea(areaKey) {
+    const want = canonicalAreaKey(areaKey);
+    const out = [];
+    CLIMB_SOURCES.forEach(src => {
+      (layerCache[src] || { features: [] }).features.forEach(f => {
+        if (climbAreaChain(f.properties).some(k => canonicalAreaKey(k) === want)) out.push({ f, src });
+      });
+    });
+    return out.sort(byClimbName);
+  }
+
+  // Climbs on the same immediate wall — the prev/next ring in climb popups.
+  function climbSiblings(props) {
+    const wall = canonicalAreaKey(props.area_id || props.area_name || '');
+    if (!wall) return [];
+    const out = [];
+    CLIMB_SOURCES.forEach(src => {
+      (layerCache[src] || { features: [] }).features.forEach(f => {
+        const p = f.properties;
+        if (canonicalAreaKey(p.area_id || p.area_name || '') === wall) out.push({ f, src });
+      });
+    });
+    return out.sort(byClimbName);
+  }
+
+  function flyToClimb(src, fid) {
+    const f = (layerCache[src] || { features: [] }).features
+      .find(x => String(x.properties.id) === String(fid));
+    if (!f) return;
+    const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : featureCentroid(f.geometry);
+    if (!coords) return;
+    map.flyTo({ center: coords, zoom: Math.max(map.getZoom(), 16), speed: 1.4 });
+    openFeaturePopup(f, src, coords);
   }
 
   // ── Data loading ─────────────────────────────────────────────
