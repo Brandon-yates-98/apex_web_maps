@@ -918,9 +918,8 @@
   let trailHoverId = null;
   let interactionsRegistered = false;
 
-  const CLIMBING_SOURCES = ['climbing_routes', 'climbing_boulders', 'climbing_areas',
-    'climbing_route_sectors', 'climbing_boulder_sectors'];
-  const CLIMB_SOURCES = ['climbing_routes', 'climbing_boulders'];   // climbs only (no areas/sectors)
+  const CLIMBING_SOURCES = ['climbing_routes', 'climbing_boulders', 'climbing_areas'];
+  const CLIMB_SOURCES = ['climbing_routes', 'climbing_boulders'];   // climbs only (no areas)
   // Climbs inherit their wall's GPS (every climb sits exactly on its area's
   // point), so routes/boulders render through their AREA's marker: a glyph
   // badge with a climb count. The climb sources load into layerCache for
@@ -940,12 +939,9 @@
   ]);
   const HULL_TEXT_WITH_COUNT = ['concat', ['get', 'name'], ' · ', ['to-string', ['get', '_climbs']]];
   const HULL_TEXT_PLAIN = ['get', 'name'];
-  // Sources whose features ARE areas (marker points + computed boundary
-  // polygons share the same area_id/area_path association).
-  const AREA_SOURCES = new Set(['climbing_areas', 'climbing_route_sectors', 'climbing_boulder_sectors']);
-  // Boundary polygons are geographic context — climbing filters never touch
-  // them (hide them with the layer toggle instead).
-  const SECTOR_SOURCES = new Set(['climbing_route_sectors', 'climbing_boulder_sectors']);
+  // Sources whose features ARE areas (markers + hull polygons share the
+  // same area_id/area_path association).
+  const AREA_SOURCES = new Set(['climbing_areas', 'climbing_area_hulls']);
   const climbFilter = { search: '', area: 'all', types: new Set(), grade: 'all' };
 
   // ── OpenBeta area ↔ climbs association ────────────────────────
@@ -1214,21 +1210,16 @@
     });
     enrichAreaBadges(hasFilter ? filteredClimbs : null);
 
-    CLIMBING_SOURCES.forEach(srcKey => {
-      const src = map.getSource(srcKey);
-      const cached = layerCache[srcKey];
-      if (!src || !cached) return;
-      // Sector boundaries always render in full — they're context, not results.
-      if (SECTOR_SOURCES.has(srcKey)) { src.setData(cached); return; }
-      if (srcKey === 'climbing_areas') {
-        // Areas narrow only by the area dropdown; search/type/grade describe
-        // climbs — their visible effect is badge counts dropping (to zero).
-        src.setData(area === 'all' ? cached : {
-          type: 'FeatureCollection',
-          features: cached.features.filter(f => inArea(f.properties, true, area)),
-        });
-      }
-    });
+    // Areas narrow only by the area dropdown; search/type/grade describe
+    // climbs — their visible effect is badge counts dropping (to zero).
+    const areasSrc = map.getSource('climbing_areas');
+    const areasCache = layerCache['climbing_areas'];
+    if (areasSrc && areasCache) {
+      areasSrc.setData(area === 'all' ? areasCache : {
+        type: 'FeatureCollection',
+        features: areasCache.features.filter(f => inArea(f.properties, true, area)),
+      });
+    }
     // hulls were recounted by enrichAreaBadges above; narrow by area too
     const hullSrc = map.getSource('climbing_area_hulls');
     const hullCache = layerCache['climbing_area_hulls'];
