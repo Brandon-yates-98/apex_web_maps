@@ -2131,7 +2131,10 @@
             'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8,
           },
           paint: { 'icon-color': '#ffffff',
-            'text-color': '#333', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } };
+            // campsite labels match the climbing labels: white on black
+            'text-color': selfBadge ? '#fff' : '#333',
+            'text-halo-color': selfBadge ? '#000' : '#fff',
+            'text-halo-width': selfBadge ? 0.8 : 1.5 } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
         mapboxIds.push(key+'-icon');
