@@ -2708,8 +2708,23 @@
   map.on('load', bootOnce);
   map.on('style.load', bootOnce);
 
-  // Re-add layers after basemap switch
+  // The basemap renders its own campsite POIs (Mapbox data) — hide them so
+  // only our campsites layer marks campgrounds.
+  function hideBasemapCampsites() {
+    map.getStyle().layers.forEach(l => {
+      if (l.type !== 'symbol' || l.id.split('-').indexOf('poi') === -1) return;
+      if (layerToSource[l.id]) return; // ours (pois_*-icon), not the basemap's
+      try {
+        const f = map.getFilter(l.id);
+        const excl = ['!=', ['get', 'maki'], 'campsite'];
+        map.setFilter(l.id, f ? ['all', f, excl] : excl);
+      } catch (e) { /* style with legacy filters — leave as-is */ }
+    });
+  }
+
+  // Re-add layers after basemap switch (style.load also fires on first load)
   map.on('style.load', () => {
+    hideBasemapCampsites();
     if (!experienceConfig) return;
     interactionsRegistered = false;
     Object.keys(sourceToMapboxLayers).forEach(k => delete sourceToMapboxLayers[k]);
