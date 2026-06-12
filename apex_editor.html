@@ -717,9 +717,9 @@
   // Custom marker glyphs + fallback circle (matches the public map's renderer)
   function drawMapGlyph(id) {
     const S = 64;
-    // 'apex-foo@#e74c3c' bakes the marker circle into the image in that color,
+    // 'dl-foo@#e74c3c' bakes the marker circle into the image in that color,
     // so circle + glyph render as one symbol (atomic stacking when markers
-    // overlap). A bare 'apex-foo' stays white-on-transparent for use over a
+    // overlap). A bare 'dl-foo' stays white-on-transparent for use over a
     // separately drawn circle layer.
     const sep = id.indexOf('@');
     const name = sep === -1 ? id : id.slice(0, sep);
@@ -728,7 +728,7 @@
     canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    if (name === 'apex-carabiner') {
+    if (name === 'dl-carabiner') {
       // tilted pear-shaped ring (small nose circle + big basket circle joined
       // by their outer tangents) with a slit erased across the upper-right
       // limb for the gate. Sized against the GPU's bilinear minification of
@@ -750,7 +750,7 @@
       ctx.moveTo(58.9, 21.8);
       ctx.lineTo(29.8, 29.0);
       ctx.stroke();
-    } else if (name === 'apex-boulder') {
+    } else if (name === 'dl-boulder') {
       ctx.beginPath();
       ctx.moveTo(10, 46);
       ctx.bezierCurveTo(5, 30, 16, 15, 32, 13);
@@ -764,7 +764,7 @@
       ctx.moveTo(31, 14);
       ctx.quadraticCurveTo(36, 30, 28, 52);
       ctx.stroke();
-    } else if (name === 'apex-cliff') {
+    } else if (name === 'dl-cliff') {
       ctx.beginPath();
       ctx.moveTo(13, 54);
       ctx.lineTo(20, 15);
@@ -792,7 +792,7 @@
     const octx = out.getContext('2d');
     octx.fillStyle = tint;
     octx.beginPath(); octx.arc(32, 32, 30, 0, Math.PI * 2); octx.fill();
-    octx.strokeStyle = name === 'apex-carabiner' ? '#ffe9e6' : '#ffffff';
+    octx.strokeStyle = name === 'dl-carabiner' ? '#ffe9e6' : '#ffffff';
     octx.lineWidth = 4;
     octx.beginPath(); octx.arc(32, 32, 28, 0, Math.PI * 2); octx.stroke();
     octx.drawImage(canvas, 0, 0);
@@ -881,10 +881,10 @@
               'swimming_pool', 'swimming', 'bench', 'picnic-site', 'marker']
           : null;
       if (iconImage) {
-        // apex-* glyphs bake the marker circle into the icon image (one
+        // dl-* glyphs bake the marker circle into the icon image (one
         // symbol per point, so overlapping markers stack atomically) — see
         // the public map's renderer. Sprite icons keep the two-layer setup.
-        const baked = typeof iconImage === 'string' && iconImage.indexOf('apex-') === 0;
+        const baked = typeof iconImage === 'string' && iconImage.indexOf('dl-') === 0;
         // the 'campsite' sprite is a self-contained badge (tent on its own
         // plate) — a circle behind it is redundant; drawn without one and
         // sized to match the carabiner route markers (both ~15px at size 1)
@@ -917,7 +917,7 @@
         }
         // route markers (carabiner) are dense — drawn 25% smaller; the
         // campsite badge matches them
-        const iconScale = dsIcon === 'apex-carabiner' || selfBadge ? 0.75 : 1;
+        const iconScale = dsIcon === 'dl-carabiner' || selfBadge ? 0.75 : 1;
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
@@ -1029,7 +1029,7 @@
   // NOTE: simple rules only — @media / @keyframes headers are left untouched (their inner
   // rules won't be scoped), which is acceptable for popup styling.
   function scopePopupCss(css, scopeSel) {
-    scopeSel = scopeSel || '.apex-popup-custom';
+    scopeSel = scopeSel || '.dl-popup-custom';
     return String(css).replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, body) => {
       const s = sel.trim();
       if (s.startsWith('@')) return m;
@@ -1043,7 +1043,7 @@
     if (cfg.popup_template && cfg.popup_template.trim()) {
       const body = renderPopupTemplate(cfg.popup_template, buildCtx(props));
       const style = cfg.popup_css ? `<style>${scopePopupCss(cfg.popup_css)}</style>` : '';
-      return `${style}<div class="apex-popup-custom">${body}
+      return `${style}<div class="dl-popup-custom">${body}
         <div class="popup-btn-row">
           <button class="popup-edit-btn"><i class="fa-solid fa-pen"></i> Edit</button>
           <button class="popup-delete-btn" title="Delete feature"><i class="fa-solid fa-trash"></i></button>
@@ -1104,7 +1104,7 @@
     if (cfg.popup_template && cfg.popup_template.trim()) {
       const body = renderPopupTemplate(cfg.popup_template, buildCtx(props));
       const style = cfg.popup_css ? `<style>${scopePopupCss(cfg.popup_css)}</style>` : '';
-      return `${style}<div class="apex-popup-custom">${body}</div>${note}`;
+      return `${style}<div class="dl-popup-custom">${body}</div>${note}`;
     }
     let cd = {};
     try { const raw = props.custom_data; cd = raw ? (typeof raw === 'object' ? raw : JSON.parse(raw)) : {}; } catch {}
@@ -1793,7 +1793,7 @@
           if (lid.endsWith('-outline')) map.setPaintProperty(lid, 'line-color', colorVal);
           if (lid.endsWith('-circle')) map.setPaintProperty(lid, 'circle-color', colorVal);
           if (lid.endsWith('-icon')) {
-            // baked apex-* markers carry their circle color in the image id
+            // baked dl-* markers carry their circle color in the image id
             const img = map.getLayoutProperty(lid, 'icon-image');
             if (typeof img === 'string' && img.indexOf('@') !== -1) {
               map.setLayoutProperty(lid, 'icon-image', img.slice(0, img.indexOf('@')) + '@' + colorVal);

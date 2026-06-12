@@ -1,7 +1,7 @@
 {
-  "name": "Apex Adventure Alliance — Trail Maps",
-  "short_name": "Apex Maps",
-  "description": "Interactive trail, climbing, and adventure maps by Apex Adventure Alliance.",
+  "name": "Devil's Lake Community Map",
+  "short_name": "Devil's Lake Map",
+  "description": "Interactive community map of Devil's Lake — trails, climbing, camping, and more.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

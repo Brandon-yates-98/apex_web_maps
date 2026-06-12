@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Adventure Alliance — Trail Map</title>
-  <meta name="description" content="Interactive trail, climbing, and adventure maps by Apex Adventure Alliance. Works offline — save the map and take it to the crag." />
+  <title>Devil's Lake Community Map</title>
+  <meta name="description" content="Interactive community map of Devil's Lake — trails, climbing, camping, and more. Works offline — save the map and take it to the crag." />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Apex Adventure Alliance — Trail Maps" />
+  <meta property="og:title" content="Devil's Lake Community Map" />
   <meta property="og:description" content="Interactive trail, climbing, and adventure maps. Works offline on your phone." />
-  <meta property="og:image" content="https://apexadventurealliance.com/wp-content/uploads/2025/04/ApexPrimaryLogoFinal-271x300.png" />
+  <meta property="og:image" content="icons/icon-512.png" />
   <link rel="icon" type="image/png" href="icons/icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#0a140a" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Apex Maps" />
+  <meta name="apple-mobile-web-app-title" content="Devil's Lake Map" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
@@ -39,7 +39,7 @@
     /* ════════════════════════════════════
        HEADER
     ════════════════════════════════════ */
-    #apex-header {
+    #site-header {
       height: 58px;
       flex-shrink: 0;
       background: linear-gradient(135deg, #0a1a0a 0%, #162914 50%, #1e3318 100%);
@@ -52,7 +52,7 @@
       box-shadow: 0 2px 16px rgba(0,0,0,0.5);
       position: relative;
     }
-    #apex-header::after {
+    #site-header::after {
       content: '';
       position: absolute;
       bottom: -3px; left: 0; right: 0;
@@ -651,9 +651,9 @@
     .popup-value a { color: #2980b9; text-decoration: none; }
     .popup-value a:hover { text-decoration: underline; }
     .popup-empty { font-size: 11px; color: #bbb; padding: 4px 0; font-style: italic; }
-    .popup-apex-desc { padding: 8px 0 6px; border-bottom: 1px solid #e8e8e8; margin-bottom: 2px; }
-    .popup-apex-desc-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #999; margin-bottom: 4px; }
-    .popup-apex-desc-text { font-size: 12px; color: #222; line-height: 1.55; white-space: pre-wrap; }
+    .popup-custom-desc { padding: 8px 0 6px; border-bottom: 1px solid #e8e8e8; margin-bottom: 2px; }
+    .popup-custom-desc-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #999; margin-bottom: 4px; }
+    .popup-custom-desc-text { font-size: 12px; color: #222; line-height: 1.55; white-space: pre-wrap; }
     .mapboxgl-popup-close-button { color: rgba(255,255,255,0.6) !important; font-size: 18px !important; line-height: 1 !important; padding: 5px 8px !important; top: 0 !important; right: 0 !important; }
     .mapboxgl-popup-close-button:hover { color: #fff !important; background: rgba(255,255,255,0.12) !important; border-radius: 0 8px 0 4px !important; }
 
@@ -674,14 +674,14 @@
 <body>
 
 <!-- ══ HEADER ══════════════════════════════════════════════════ -->
-<header id="apex-header">
+<header id="site-header">
   <button id="menu-toggle" aria-label="Toggle layer panel">
     <i class="fa-solid fa-bars"></i>
   </button>
-  <img class="header-logo" src="https://apexadventurealliance.com/wp-content/uploads/2023/07/cropped-rope-logo-1.png" alt="Apex Adventure Alliance" />
+  <img class="header-logo" src="icons/logo-mark.png" alt="Devil's Lake Community Map" />
   <div class="header-divider"></div>
   <div class="header-brand">
-    <span class="header-org">Apex Adventure Alliance</span>
+    <span class="header-org">Devil's Lake Community Map</span>
     <span class="header-title" id="map-title">Loading&hellip;</span>
   </div>
   <div class="header-spacer"></div>
@@ -695,8 +695,8 @@
 <main id="map-wrapper">
 
   <div id="loading-screen">
-    <img class="loading-logo" src="https://apexadventurealliance.com/wp-content/uploads/2023/07/cropped-rope-logo-1.png" alt="Apex Adventure Alliance" />
-    <div class="loading-title">Apex Adventure Alliance</div>
+    <img class="loading-logo" src="icons/logo-mark.png" alt="Devil's Lake Community Map" />
+    <div class="loading-title">Devil's Lake Community Map</div>
     <div class="loading-sub">Loading map data</div>
     <div class="loading-dots">
       <div class="loading-dot"></div>
@@ -819,9 +819,9 @@
 
     <div class="panel-footer">
       <img class="panel-footer-logo"
-           src="https://apexadventurealliance.com/wp-content/uploads/2025/04/ApexPrimaryLogoFinal-271x300.png"
-           alt="Apex Adventure Alliance" />
-      <div class="panel-footer-tagline">Wisconsin Climbing Guides</div>
+           src="icons/logo-mark.png"
+           alt="Devil's Lake Community Map" />
+      <div class="panel-footer-tagline">Devil's Lake Community Map</div>
     </div>
   </aside>
 
@@ -855,7 +855,7 @@
     open() {
       if (this._db) return this._db;
       this._db = new Promise((res, rej) => {
-        const req = indexedDB.open('apex-offline', 1);
+        const req = indexedDB.open('dl-offline', 1);
         req.onupgradeneeded = () => req.result.createObjectStore('kv');
         req.onsuccess = () => res(req.result);
         req.onerror = () => rej(req.error);
@@ -1137,7 +1137,7 @@
   // NOTE: simple rules only — @media / @keyframes headers are left untouched (their inner
   // rules won't be scoped), which is acceptable for popup styling.
   function scopePopupCss(css, scopeSel) {
-    scopeSel = scopeSel || '.apex-popup-custom';
+    scopeSel = scopeSel || '.dl-popup-custom';
     return String(css).replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, body) => {
       const s = sel.trim();
       if (s.startsWith('@')) return m;
@@ -1636,7 +1636,7 @@
     if (cfg.popup_template && cfg.popup_template.trim()) {
       const body = renderPopupTemplate(cfg.popup_template, buildCtx(props));
       const style = cfg.popup_css ? `<style>${scopePopupCss(cfg.popup_css)}</style>` : '';
-      return `${style}<div class="apex-popup-custom">${body}</div>`;
+      return `${style}<div class="dl-popup-custom">${body}</div>`;
     }
     const name = props.name || null;
     const tagKeys = PRIMARY_TAG_KEYS[sourceKey] || [];
@@ -1695,9 +1695,9 @@
         .join('');
       if (fieldRows) customHTML = `<div style="border-bottom:1px solid #eee;margin-bottom:4px">${fieldRows}</div>`;
     } else if (customData.apex_description) {
-      customHTML = `<div class="popup-apex-desc">
-        <div class="popup-apex-desc-label">Description</div>
-        <div class="popup-apex-desc-text">${customData.apex_description}</div>
+      customHTML = `<div class="popup-custom-desc">
+        <div class="popup-custom-desc-label">Description</div>
+        <div class="popup-custom-desc-text">${customData.apex_description}</div>
       </div>`;
     }
 
@@ -1807,7 +1807,7 @@
   const OFFLINE_TILE_MAXZOOM = 15; // raster overzooms past this; also respects server policy
   const OFFLINE_STYLE = {
     version: 8,
-    name: 'apex-offline',
+    name: 'dl-offline',
     glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
     sources: {
       'offline-tiles': {
@@ -1901,9 +1901,9 @@
   // and render offline. White on transparent — they sit on the colored circle.
   function drawMapGlyph(id) {
     const S = 64; // drawn 4x, registered at pixelRatio 4 → crisp 16px logical
-    // 'apex-foo@#e74c3c' bakes the marker circle into the image in that color,
+    // 'dl-foo@#e74c3c' bakes the marker circle into the image in that color,
     // so circle + glyph render as one symbol (atomic stacking when markers
-    // overlap). A bare 'apex-foo' stays white-on-transparent for use over a
+    // overlap). A bare 'dl-foo' stays white-on-transparent for use over a
     // separately drawn circle layer.
     const sep = id.indexOf('@');
     const name = sep === -1 ? id : id.slice(0, sep);
@@ -1912,7 +1912,7 @@
     canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    if (name === 'apex-carabiner') {
+    if (name === 'dl-carabiner') {
       // tilted pear-shaped ring (small nose circle + big basket circle joined
       // by their outer tangents) with a slit erased across the upper-right
       // limb for the gate. Sized against the GPU's bilinear minification of
@@ -1934,7 +1934,7 @@
       ctx.moveTo(58.9, 21.8);
       ctx.lineTo(29.8, 29.0);
       ctx.stroke();
-    } else if (name === 'apex-boulder') {
+    } else if (name === 'dl-boulder') {
       // rounded freestanding rock with a crack
       ctx.beginPath();
       ctx.moveTo(10, 46);
@@ -1949,7 +1949,7 @@
       ctx.moveTo(31, 14);
       ctx.quadraticCurveTo(36, 30, 28, 52);
       ctx.stroke();
-    } else if (name === 'apex-cliff') {
+    } else if (name === 'dl-cliff') {
       // tall crag tooth with strata lines on the face
       ctx.beginPath();
       ctx.moveTo(13, 54);
@@ -1979,7 +1979,7 @@
     const octx = out.getContext('2d');
     octx.fillStyle = tint;
     octx.beginPath(); octx.arc(32, 32, 30, 0, Math.PI * 2); octx.fill();
-    octx.strokeStyle = name === 'apex-carabiner' ? '#ffe9e6' : '#ffffff';
+    octx.strokeStyle = name === 'dl-carabiner' ? '#ffe9e6' : '#ffffff';
     octx.lineWidth = 4;
     octx.beginPath(); octx.arc(32, 32, 28, 0, Math.PI * 2); octx.stroke();
     octx.drawImage(canvas, 0, 0);
@@ -2053,12 +2053,12 @@
           : null;
 
       if (iconImage) {
-        // apex-* glyphs bake the marker circle into the icon image (one
+        // dl-* glyphs bake the marker circle into the icon image (one
         // symbol per point, so overlapping markers stack atomically). With a
         // separate circle layer, every icon draws above every circle and a
         // lower point's glyph lands on its neighbor's circle. Sprite icons
         // (legacy 'pois') can't be baked and keep the two-layer setup.
-        const baked = typeof iconImage === 'string' && iconImage.indexOf('apex-') === 0;
+        const baked = typeof iconImage === 'string' && iconImage.indexOf('dl-') === 0;
         // the 'campsite' sprite is a self-contained badge (tent on its own
         // plate) — a circle behind it is redundant; drawn without one and
         // sized to match the carabiner route markers (both ~15px at size 1)
@@ -2093,7 +2093,7 @@
         }
         // route markers (carabiner) are dense — drawn 25% smaller; the
         // campsite badge matches them
-        const iconScale = dsIcon === 'apex-carabiner' || selfBadge ? 0.75 : 1;
+        const iconScale = dsIcon === 'dl-carabiner' || selfBadge ? 0.75 : 1;
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
@@ -2646,7 +2646,7 @@
 
     // Apply header
     document.getElementById('map-title').textContent = exp.title || 'Trail Map';
-    document.title = `${exp.title} — Apex Adventure Alliance`;
+    document.title = `${exp.title} — Devil's Lake Community Map`;
 
     // Apply the experience's basemap (default outdoors is already loaded).
     // Skipped when running on the offline fallback style — a remote style
@@ -2858,7 +2858,7 @@
 
       status.textContent = 'Saving app…';
       const reg = await navigator.serviceWorker.ready;
-      const shell = await caches.open('apex-shell-v2'); // keep in sync with VERSION in sw.js
+      const shell = await caches.open('dl-shell-v2'); // keep in sync with VERSION in sw.js
       const pageResp = await fetch(location.href, { cache: 'reload' });
       if (pageResp.ok) {
         // reg.scope is the canonical shell key the SW serves navigations from
