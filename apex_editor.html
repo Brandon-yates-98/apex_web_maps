@@ -717,11 +717,18 @@
   // Custom marker glyphs + fallback circle (matches the public map's renderer)
   function drawMapGlyph(id) {
     const S = 64;
+    // 'apex-foo@#e74c3c' bakes the marker circle into the image in that color,
+    // so circle + glyph render as one symbol (atomic stacking when markers
+    // overlap). A bare 'apex-foo' stays white-on-transparent for use over a
+    // separately drawn circle layer.
+    const sep = id.indexOf('@');
+    const name = sep === -1 ? id : id.slice(0, sep);
+    const tint = sep === -1 ? null : id.slice(sep + 1);
     const canvas = document.createElement('canvas');
     canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    if (id === 'apex-carabiner') {
+    if (name === 'apex-carabiner') {
       // tilted pear-shaped ring (small nose circle + big basket circle joined
       // by their outer tangents) with a slit erased across the upper-right
       // limb for the gate. Sized against the GPU's bilinear minification of
@@ -743,7 +750,7 @@
       ctx.moveTo(58.9, 21.8);
       ctx.lineTo(29.8, 29.0);
       ctx.stroke();
-    } else if (id === 'apex-boulder') {
+    } else if (name === 'apex-boulder') {
       ctx.beginPath();
       ctx.moveTo(10, 46);
       ctx.bezierCurveTo(5, 30, 16, 15, 32, 13);
@@ -757,7 +764,7 @@
       ctx.moveTo(31, 14);
       ctx.quadraticCurveTo(36, 30, 28, 52);
       ctx.stroke();
-    } else if (id === 'apex-cliff') {
+    } else if (name === 'apex-cliff') {
       ctx.beginPath();
       ctx.moveTo(13, 54);
       ctx.lineTo(20, 15);
@@ -772,12 +779,23 @@
       ctx.moveTo(22, 28); ctx.lineTo(38, 26);
       ctx.moveTo(22, 40); ctx.lineTo(44, 38);
       ctx.stroke();
-    } else {
+    } else if (!tint) {
       ctx.beginPath();
       ctx.arc(S / 2, S / 2, S / 2 - 5, 0, Math.PI * 2);
       ctx.fill();
     }
-    return { width: S, height: S, data: ctx.getImageData(0, 0, S, S).data };
+    if (!tint) return { width: S, height: S, data: ctx.getImageData(0, 0, S, S).data };
+    // composite the glyph onto its marker disc: tinted fill + white rim
+    // (rim 4 units = the 1px-logical outline the circle layer used to draw)
+    const out = document.createElement('canvas');
+    out.width = S; out.height = S;
+    const octx = out.getContext('2d');
+    octx.fillStyle = tint;
+    octx.beginPath(); octx.arc(32, 32, 30, 0, Math.PI * 2); octx.fill();
+    octx.strokeStyle = '#ffffff'; octx.lineWidth = 4;
+    octx.beginPath(); octx.arc(32, 32, 28, 0, Math.PI * 2); octx.stroke();
+    octx.drawImage(canvas, 0, 0);
+    return { width: S, height: S, data: octx.getImageData(0, 0, S, S).data };
   }
   map.on('styleimagemissing', e => {
     if (!map.hasImage(e.id)) map.addImage(e.id, drawMapGlyph(e.id), { pixelRatio: 4 });
@@ -862,25 +880,34 @@
               'swimming_pool', 'swimming', 'bench', 'picnic-site', 'marker']
           : null;
       if (iconImage) {
-        const circleColor = (key === 'pois' && !dsIcon)
-          ? ['match', POI_TYPE,
-              'parking', '#4a90d9', 'viewpoint', '#e67e22', 'camp_site', '#27ae60',
-              'picnic_site', '#00b894', 'shelter', '#e17055', 'toilets', '#636e72',
-              'drinking_water', '#3498db', 'restaurant', '#e84393', 'cafe', '#e84393',
-              'information', '#3498db', 'peak', '#8e44ad', color]
-          : color;
-        const circleSpec = { id: key+'-circle', type: 'circle', source: key,
-          paint: { 'circle-color': circleColor,
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 7, 14, 11],
-            'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-opacity': 0.92 } };
-        if (filter) circleSpec.filter = filter;
-        map.addLayer(circleSpec);
+        // apex-* glyphs bake the marker circle into the icon image (one
+        // symbol per point, so overlapping markers stack atomically) — see
+        // the public map's renderer. Sprite icons keep the two-layer setup.
+        const baked = typeof iconImage === 'string' && iconImage.indexOf('apex-') === 0;
+        if (!baked) {
+          const circleColor = (key === 'pois' && !dsIcon)
+            ? ['match', POI_TYPE,
+                'parking', '#4a90d9', 'viewpoint', '#e67e22', 'camp_site', '#27ae60',
+                'picnic_site', '#00b894', 'shelter', '#e17055', 'toilets', '#636e72',
+                'drinking_water', '#3498db', 'restaurant', '#e84393', 'cafe', '#e84393',
+                'information', '#3498db', 'peak', '#8e44ad', color]
+            : color;
+          const circleSpec = { id: key+'-circle', type: 'circle', source: key,
+            paint: { 'circle-color': circleColor,
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 7, 14, 11],
+              'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-opacity': 0.92 } };
+          if (filter) circleSpec.filter = filter;
+          map.addLayer(circleSpec);
+          mapboxIds.push(key+'-circle');
+        }
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
-            'icon-image': iconImage,
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.55, 14, 0.85],
-            // Pin the icon to its (always-drawn) circle so it never collides out
-            // or borrows a neighbor's spot — matches the public map's renderer.
+            'icon-image': baked ? iconImage + '@' + color : iconImage,
+            // baked: disc radius is 30/64 of the image → 7.5px logical at
+            // size 1; sized to match the old circle layer (7px → 11px)
+            'icon-size': baked
+              ? ['interpolate', ['linear'], ['zoom'], 10, 0.93, 14, 1.47]
+              : ['interpolate', ['linear'], ['zoom'], 10, 0.55, 14, 0.85],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
             'text-field': ['step', ['zoom'], '', 14, ['coalesce', ['get', 'name'], '']],
@@ -891,7 +918,7 @@
             'text-color': '#333', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
-        mapboxIds.push(key+'-circle', key+'-icon');
+        mapboxIds.push(key+'-icon');
       } else {
         const spec = { id: key+'-circle', type: 'circle', source: key,
           paint: { 'circle-color': color, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
@@ -1747,6 +1774,13 @@
           if (lid.endsWith('-fill')) map.setPaintProperty(lid, 'fill-opacity', opacVal * 0.3);
           if (lid.endsWith('-outline')) map.setPaintProperty(lid, 'line-color', colorVal);
           if (lid.endsWith('-circle')) map.setPaintProperty(lid, 'circle-color', colorVal);
+          if (lid.endsWith('-icon')) {
+            // baked apex-* markers carry their circle color in the image id
+            const img = map.getLayoutProperty(lid, 'icon-image');
+            if (typeof img === 'string' && img.indexOf('@') !== -1) {
+              map.setLayoutProperty(lid, 'icon-image', img.slice(0, img.indexOf('@')) + '@' + colorVal);
+            }
+          }
         });
         setLayerVisible(key, visibleVal);
         if (layerMeta[key]) layerMeta[key].color = colorVal;
