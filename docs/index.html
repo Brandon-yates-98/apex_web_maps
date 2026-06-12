@@ -928,9 +928,10 @@
   // Counts are injected into the cached area features by enrichAreaBadges.
   const AREA_BADGE_FILTER = ['>', ['coalesce', ['get', '_climbs'], 0], 0];
   // Zoom bands for semantic clustering: hierarchy depth d owns
-  // [BAND_START[d], BAND_START[d+1]). Integer edges — ['zoom'] in filters
-  // is only re-evaluated at integer zoom levels.
-  const BAND_START = [0, 12, 13, 14, 15];
+  // [BAND[d], BAND[d+1]) for its family. Integer edges — ['zoom'] in
+  // filters is only re-evaluated at integer zoom levels. Routes run two
+  // levels later than boulders so their bigger hulls stay up longer.
+  const BAND_START = { routes: [0, 14, 15, 16, 17], boulders: [0, 12, 13, 14, 15] };
   const HULL_TEXT_WITH_COUNT = ['concat', ['get', 'name'], ' · ', ['to-string', ['get', '_climbs']]];
   const HULL_TEXT_PLAIN = ['get', 'name'];
   // Sources whose features ARE areas (marker points + computed boundary
@@ -2772,6 +2773,7 @@
         });
       });
     });
+    const bandOf = c => BAND_START[c.routes >= c.boulders ? 'routes' : 'boulders'];
     const pathByArea = {};
     areas.features.forEach(f => {
       const p = f.properties;
@@ -2780,7 +2782,8 @@
       p._boulders = c.boulders;
       p._climbs = c.routes + c.boulders;
       // leaf badges enter at their depth's band and stay (no _maxz)
-      p._minz = BAND_START[Math.min(p.depth || 0, BAND_START.length - 1)];
+      const band = bandOf(c);
+      p._minz = band[Math.min(p.depth || 0, band.length - 1)];
       pathByArea[p.area_id] = p.area_path;
     });
     // hulls carry their subtree's counts and live only in their depth's band
@@ -2791,9 +2794,10 @@
       p._routes = c.routes;
       p._boulders = c.boulders;
       p._climbs = c.routes + c.boulders;
-      const d = Math.min(p.depth || 0, BAND_START.length - 2);
-      p._minz = BAND_START[d];
-      p._maxz = BAND_START[d + 1];
+      const band = bandOf(c);
+      const d = Math.min(p.depth || 0, band.length - 2);
+      p._minz = band[d];
+      p._maxz = band[d + 1];
       if (!p.area_path) p.area_path = pathByArea[p.area_id]; // for inArea()
     });
   }
