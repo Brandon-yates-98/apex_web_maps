@@ -2163,28 +2163,25 @@
         if (!map.getSource(HULL_SRC)) {
           map.addSource(HULL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         }
-        const mkHull = (suffix, typeF, tint, img) => {
+        const mkHull = (suffix, typeF, tint) => {
           map.addLayer({ id: `${HULL_SRC}-fill-${suffix}`, type: 'fill', source: HULL_SRC,
             filter: guards(typeF),
             paint: { 'fill-color': tint, 'fill-opacity': 0.14 } }, firstSymbol);
           map.addLayer({ id: `${HULL_SRC}-line-${suffix}`, type: 'line', source: HULL_SRC,
             filter: guards(typeF),
             paint: { 'line-color': tint, 'line-width': 1.6, 'line-opacity': 0.85 } }, firstSymbol);
+          // the polygon IS the marker — just the name·count label at its
+          // pole of inaccessibility, no point icon
           map.addLayer({ id: `${HULL_SRC}-label-${suffix}`, type: 'symbol', source: HULL_SRC,
             filter: guards(typeF),
             layout: {
-              'icon-image': img,
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6975, 14, 1.1025],
-              'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
               'text-field': HULL_TEXT_WITH_COUNT,
-              'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top',
-              'text-optional': true, 'text-max-width': 8,
+              'text-size': 11, 'text-max-width': 8,
             },
             paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1 } });
         };
-        mkHull('routes', routeF, '#e74c3c', 'dl-carabiner@#e74c3c');
-        mkHull('boulders', boulderF, '#e67e22', 'dl-boulder@#e67e22');
+        mkHull('routes', routeF, '#e74c3c');
+        mkHull('boulders', boulderF, '#e67e22');
 
         const addBadgeLayer = (id, typeF, img, tint) => map.addLayer({
           id, type: 'symbol', source: key,
