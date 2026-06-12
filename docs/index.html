@@ -1375,6 +1375,11 @@
       const row = document.querySelector(`.layer-row[data-source="${s}"]`);
       if (row) row.classList.add('on');
     });
+    // the split area rows (the counts row keeps its own state)
+    ['routes', 'boulders'].forEach(t => {
+      const row = document.querySelector(`.layer-row[data-source="climbing_areas@${t}"]`);
+      if (row) row.classList.add('on');
+    });
     const panel = document.getElementById('climbing-filter-panel');
     if (panel) panel.classList.remove('collapsed');
     applyClimbingFilters();
@@ -2132,11 +2137,16 @@
           // the marker's corner (hidden for single-climb walls, where the
           // badge looks exactly like the old single-climb marker). Counts
           // come from enrichAreaBadges() and track the climbing filters.
-          const IS_BOULDER_WALL = ['>', ['get', '_boulders'], ['get', '_routes']];
-          map.addLayer({ id: key+'-badge', type: 'symbol', source: key,
-            filter: filter ? ['all', AREA_BADGE_FILTER, filter] : AREA_BADGE_FILTER,
+          // Route and boulder walls are separate layers so the sidebar can
+          // toggle them independently.
+          const B = ['coalesce', ['get', '_boulders'], 0];
+          const R = ['coalesce', ['get', '_routes'], 0];
+          const addBadgeLayer = (id, typeF, img, tint) => map.addLayer({
+            id, type: 'symbol', source: key,
+            filter: filter ? ['all', AREA_BADGE_FILTER, typeF, filter]
+                           : ['all', AREA_BADGE_FILTER, typeF],
             layout: {
-              'icon-image': ['case', IS_BOULDER_WALL, 'dl-boulder@#e67e22', 'dl-carabiner@#e74c3c'],
+              'icon-image': img,
               'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6975, 14, 1.1025],
               'icon-allow-overlap': true,
               'icon-ignore-placement': true,
@@ -2150,10 +2160,12 @@
             },
             paint: {
               'text-color': '#ffffff',
-              'text-halo-color': ['case', IS_BOULDER_WALL, '#e67e22', '#e74c3c'],
+              'text-halo-color': tint,
               'text-halo-width': 1.4,
             } });
-          mapboxIds.push(key+'-badge');
+          addBadgeLayer(key+'-badge-routes', ['<=', B, R], 'dl-carabiner@#e74c3c', '#e74c3c');
+          addBadgeLayer(key+'-badge-boulders', ['>', B, R], 'dl-boulder@#e67e22', '#e67e22');
+          mapboxIds.push(key+'-badge-routes', key+'-badge-boulders');
         }
       }
     } else {
@@ -2225,8 +2237,13 @@
       (sourceToMapboxLayers[src] || []).forEach(id => {
         if (!map.getLayer(id)) return;
         let f = combined;
-        if (id.endsWith('-badge')) {
-          f = combined ? ['all', AREA_BADGE_FILTER, combined] : AREA_BADGE_FILTER;
+        if (id.indexOf('-badge-') !== -1) {
+          // re-derive the badge layer's own guards (climbs present + type)
+          const typeF = id.endsWith('-badge-boulders')
+            ? ['>', ['coalesce', ['get', '_boulders'], 0], ['coalesce', ['get', '_routes'], 0]]
+            : ['<=', ['coalesce', ['get', '_boulders'], 0], ['coalesce', ['get', '_routes'], 0]];
+          f = combined ? ['all', AREA_BADGE_FILTER, typeF, combined]
+                       : ['all', AREA_BADGE_FILTER, typeF];
         }
         map.setFilter(id, f);
       });
@@ -2414,6 +2431,32 @@
         listEl.appendChild(g);
       }
 
+      // The areas layer splits into two toggleable rows — route walls and
+      // boulder walls render as separate badge layers on the same source.
+      if (layerCfg.source_key === 'climbing_areas') {
+        const onByDefault = !!layerCfg.visible_by_default;
+        areaTypeVis.routes = areaTypeVis.boulders = onByDefault;
+        areaTypeVis.counts = true;
+        [['routes', 'Route Areas', '#e74c3c', onByDefault],
+         ['boulders', 'Boulder Areas', '#e67e22', onByDefault],
+         ['counts', 'Climb Counts', '#9bc23c', true]].forEach(([type, label, swatch, on]) => {
+          const row = document.createElement('div');
+          row.className = 'layer-row' + (on ? ' on' : '');
+          row.dataset.source = 'climbing_areas@' + type;
+          row.innerHTML = `
+            <div class="layer-swatch" style="background:${swatch};border-radius:50%"></div>
+            <span class="layer-name">${label}</span>
+            <span class="layer-count" id="count-climbing_areas@${type}"></span>
+            <div class="layer-toggle"></div>`;
+          row.addEventListener('click', () => {
+            setLayerVisible(row.dataset.source, row.classList.toggle('on'));
+          });
+          listEl.appendChild(row);
+        });
+        addLayerToMap(layerCfg);
+        return;
+      }
+
       const color = layerMeta[layerCfg.source_key].color;
       const isOn = layerCfg.visible_by_default;
       const row = document.createElement('div');
@@ -2480,7 +2523,33 @@
     });
   }
 
+  // The climbing_areas source renders as two toggleable marker families —
+  // route-area badges and boulder-area badges — plus a toggle for the
+  // corner climb counts, tracked here. The plain circle layer (structural
+  // parent areas) shows while either badge family is on.
+  const areaTypeVis = { routes: true, boulders: true, counts: true };
+  function syncAreaLayers() {
+    const setVis = (id, on) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    };
+    setVis('climbing_areas-badge-routes', areaTypeVis.routes);
+    setVis('climbing_areas-badge-boulders', areaTypeVis.boulders);
+    setVis('climbing_areas-circle', areaTypeVis.routes || areaTypeVis.boulders);
+    ['climbing_areas-badge-routes', 'climbing_areas-badge-boulders'].forEach(id => {
+      if (map.getLayer(id)) map.setPaintProperty(id, 'text-opacity', areaTypeVis.counts ? 1 : 0);
+    });
+  }
+
   function setLayerVisible(sourceKey, visible) {
+    // pseudo keys from the split sidebar rows ('climbing_areas@routes' /
+    // '@boulders'); the bare key acts as a master switch for both
+    if (sourceKey.indexOf('climbing_areas') === 0) {
+      const type = sourceKey.split('@')[1];
+      if (type) areaTypeVis[type] = visible;
+      else areaTypeVis.routes = areaTypeVis.boulders = visible;
+      syncAreaLayers();
+      return;
+    }
     const val = visible ? 'visible' : 'none';
     (sourceToMapboxLayers[sourceKey] || []).forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', val);
@@ -2760,8 +2829,19 @@
     setupClimbingFilterListeners();
     const total = await loadLayerData(layers);
     enrichAreaBadges();
-    const areasSrc = map.getSource('climbing_areas');
-    if (areasSrc && layerCache['climbing_areas']) areasSrc.setData(layerCache['climbing_areas']);
+    const areaCache = layerCache['climbing_areas'];
+    if (areaCache) {
+      const areasSrc = map.getSource('climbing_areas');
+      if (areasSrc) areasSrc.setData(areaCache);
+      // sidebar counts for the split rows: walls of each type
+      const isWall = f => (f.properties._climbs || 0) > 0;
+      const rw = areaCache.features.filter(f => isWall(f) && f.properties._routes >= f.properties._boulders).length;
+      const bw = areaCache.features.filter(f => isWall(f) && f.properties._boulders > f.properties._routes).length;
+      const rEl = document.getElementById('count-climbing_areas@routes');
+      const bEl = document.getElementById('count-climbing_areas@boulders');
+      if (rEl) rEl.textContent = rw;
+      if (bEl) bEl.textContent = bw;
+    }
     initClimbingFilters(layers);
     initCampFilter(layers);
     initFeatureFilters(layers);
