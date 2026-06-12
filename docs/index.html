@@ -929,9 +929,9 @@
   const AREA_BADGE_FILTER = ['>', ['coalesce', ['get', '_climbs'], 0], 0];
   // Zoom bands for semantic clustering: hierarchy depth d owns
   // [BAND[d], BAND[d+1]) for its family. Integer edges — ['zoom'] in
-  // filters is only re-evaluated at integer zoom levels. Routes run two
+  // filters is only re-evaluated at integer zoom levels. Routes run four
   // levels later than boulders so their bigger hulls stay up longer.
-  const BAND_START = { routes: [0, 14, 15, 16, 17], boulders: [0, 12, 13, 14, 15] };
+  const BAND_START = { routes: [0, 16, 17, 18, 19], boulders: [0, 12, 13, 14, 15] };
   const HULL_TEXT_WITH_COUNT = ['concat', ['get', 'name'], ' · ', ['to-string', ['get', '_climbs']]];
   const HULL_TEXT_PLAIN = ['get', 'name'];
   // Sources whose features ARE areas (marker points + computed boundary
