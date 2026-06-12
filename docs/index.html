@@ -1924,7 +1924,7 @@
       ctx.arc(32, 42, 16, aR, aL + 2 * Math.PI); // basket, through the bottom
       ctx.arc(32, 15, 9.5, aL, aR);              // nose, through the top
       ctx.closePath();
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = '#ffe9e6'; // very light reddish white, like the tent badge's green-tinged linework
       ctx.lineWidth = 10;
       ctx.lineJoin = 'round';
       ctx.stroke();
@@ -1979,7 +1979,8 @@
     const octx = out.getContext('2d');
     octx.fillStyle = tint;
     octx.beginPath(); octx.arc(32, 32, 30, 0, Math.PI * 2); octx.fill();
-    octx.strokeStyle = '#ffffff'; octx.lineWidth = 4;
+    octx.strokeStyle = name === 'apex-carabiner' ? '#ffe9e6' : '#ffffff';
+    octx.lineWidth = 4;
     octx.beginPath(); octx.arc(32, 32, 28, 0, Math.PI * 2); octx.stroke();
     octx.drawImage(canvas, 0, 0);
     return { width: S, height: S, data: octx.getImageData(0, 0, S, S).data };
@@ -2078,6 +2079,16 @@
               'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-opacity': 0.92 } };
           if (filter) circleSpec.filter = filter;
           map.addLayer(circleSpec);
+          mapboxIds.push(key+'-circle');
+        } else if (selfBadge) {
+          // thin greenish-white ring peeking ~1px·size around the badge —
+          // matches the rim baked into the route markers (badge ≈ 7.5px·size,
+          // rim ≈ 1px·size → ring radius 8.5·size)
+          const ringSpec = { id: key+'-circle', type: 'circle', source: key,
+            paint: { 'circle-color': '#eaf6ec',
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3.83, 14, 6.38] } };
+          if (filter) ringSpec.filter = filter;
+          map.addLayer(ringSpec);
           mapboxIds.push(key+'-circle');
         }
         // route markers (carabiner) are dense — drawn 25% smaller; the
