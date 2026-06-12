@@ -2166,8 +2166,7 @@
             paint: { 'fill-color': tint, 'fill-opacity': 0.14 } }, firstSymbol);
           map.addLayer({ id: `${HULL_SRC}-line-${suffix}`, type: 'line', source: HULL_SRC,
             filter: guards(typeF),
-            paint: { 'line-color': tint, 'line-width': 1.6,
-              'line-dasharray': [3, 2], 'line-opacity': 0.85 } }, firstSymbol);
+            paint: { 'line-color': tint, 'line-width': 1.6, 'line-opacity': 0.85 } }, firstSymbol);
           map.addLayer({ id: `${HULL_SRC}-label-${suffix}`, type: 'symbol', source: HULL_SRC,
             filter: guards(typeF),
             layout: {
