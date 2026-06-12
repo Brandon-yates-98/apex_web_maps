@@ -884,7 +884,11 @@
         // symbol per point, so overlapping markers stack atomically) — see
         // the public map's renderer. Sprite icons keep the two-layer setup.
         const baked = typeof iconImage === 'string' && iconImage.indexOf('apex-') === 0;
-        if (!baked) {
+        // the 'campsite' sprite is a self-contained badge (tent on its own
+        // plate) — a circle behind it is redundant; drawn without one and
+        // sized to match the carabiner route markers (both ~15px at size 1)
+        const selfBadge = dsIcon === 'campsite';
+        if (!baked && !selfBadge) {
           const circleColor = (key === 'pois' && !dsIcon)
             ? ['match', POI_TYPE,
                 'parking', '#4a90d9', 'viewpoint', '#e67e22', 'camp_site', '#27ae60',
@@ -900,14 +904,15 @@
           map.addLayer(circleSpec);
           mapboxIds.push(key+'-circle');
         }
-        // route markers (carabiner) are dense — drawn 25% smaller
-        const iconScale = dsIcon === 'apex-carabiner' ? 0.75 : 1;
+        // route markers (carabiner) are dense — drawn 25% smaller; the
+        // campsite badge matches them
+        const iconScale = dsIcon === 'apex-carabiner' || selfBadge ? 0.75 : 1;
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
             // baked: disc radius is 30/64 of the image → 7.5px logical at
             // size 1; sized to match the old circle layer (7px → 11px)
-            'icon-size': baked
+            'icon-size': baked || selfBadge
               ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
               : ['interpolate', ['linear'], ['zoom'], 10, 0.55, 14, 0.85],
             'icon-allow-overlap': true,
