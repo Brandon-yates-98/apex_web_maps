@@ -43,7 +43,10 @@ ANON_KEY = (
 BUFFER_DEG = 55 / 111_000          # ~55 m in latitude degrees
 SIMPLIFY_DEG = 6 / 111_000         # ~6 m — keeps vertices low, shape smooth
 CONCAVE_RATIO = 0.45               # 0 = max concave, 1 = convex hull
-EXCLUDE_NAMES = {"Linkups, Contrivances, Oddities and Triflings"}  # not geographic
+EXCLUDE_NAMES = {
+    "Linkups, Contrivances, Oddities and Triflings",  # not geographic
+    "Devil's Lake Rock Climbing",  # park-wide root — too big to be a useful polygon
+}
 OUT_SQL = sys.argv[1] if len(sys.argv) > 1 else "migrations/020_climbing_area_hulls_v2.sql"
 OUT_PREVIEW = "_hulls_preview.geojson"
 
