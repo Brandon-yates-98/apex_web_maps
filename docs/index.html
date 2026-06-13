@@ -1890,27 +1890,20 @@
         climbAssocHTML = canShowClimbs
           ? `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to this area</button>`
           : `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-magnifying-glass-location"></i> Zoom to this area</button>`;
-        // areas are single-type in practice — one label, one count
-        const nRoutes = climbs.filter(c => c.src === 'climbing_routes').length;
-        const headLabel = nRoutes === climbs.length ? 'Routes'
-          : nRoutes === 0 ? 'Boulders' : 'Climbs';
-        const family = nRoutes === climbs.length ? 'routes'
-          : nRoutes === 0 ? 'boulders' : 'mixed';
-        const noun = family === 'routes' ? 'route' : family === 'boulders' ? 'boulder' : 'climb';
+        // areas are single-type (migration 023 split the mixed walls) —
+        // a boulder area is simply one with no routes
+        const family = climbs.some(c => c.src === 'climbing_routes') ? 'routes' : 'boulders';
+        const headLabel = family === 'routes' ? 'Routes' : 'Boulders';
+        const noun = family === 'routes' ? 'route' : 'boulder';
         climbCountHTML = `<span class="popup-badge popup-climbcount">${climbs.length} ${noun}${climbs.length === 1 ? '' : 's'}</span>`;
         const gradePills = family === 'routes'
           ? [['easy', '≤5.8'], ['mod', '5.9–5.10'], ['hard', '5.11'], ['proj', '5.12+']]
-          : family === 'boulders'
-            ? [['easy', 'V0–V3'], ['mod', 'V4–V6'], ['hard', 'V7–V9'], ['proj', 'V10+']]
-            : [['easy', 'Easy'], ['mod', 'Moderate'], ['hard', 'Hard'], ['proj', 'Project']];
+          : [['easy', 'V0–V3'], ['mod', 'V4–V6'], ['hard', 'V7–V9'], ['proj', 'V10+']];
         // the active pill mirrors the sidebar's slider state (null = a
         // custom range no pill represents)
-        const rB = bucketForRange(R_BUCKETS, climbFilter.rmin, climbFilter.rmax);
-        const vB = bucketForRange(V_BUCKETS, climbFilter.vmin, climbFilter.vmax);
-        // mixed walls: if only one family is narrowed, that bucket reads as
-        // the active one
-        const curBucket = family === 'routes' ? rB : family === 'boulders' ? vB
-          : rB === vB ? rB : rB === 'all' ? vB : vB === 'all' ? rB : null;
+        const curBucket = family === 'routes'
+          ? bucketForRange(R_BUCKETS, climbFilter.rmin, climbFilter.rmax)
+          : bucketForRange(V_BUCKETS, climbFilter.vmin, climbFilter.vmax);
         climbListHTML = `
           <div class="pcl-head">${headLabel}</div>
           <div class="pcl-tools" data-family="${family}">
@@ -2890,12 +2883,9 @@
       el.querySelectorAll('.pcl-tool[data-gbucket]').forEach(btn => {
         btn.addEventListener('click', () => {
           const want = btn.dataset.gbucket;
-          if (family !== 'routes' && V_BUCKETS[want] && sliderSetters.v) {
-            sliderSetters.v(...V_BUCKETS[want]);
-          }
-          if (family !== 'boulders' && R_BUCKETS[want] && sliderSetters.r) {
-            sliderSetters.r(...R_BUCKETS[want]);
-          }
+          const buckets = family === 'boulders' ? V_BUCKETS : R_BUCKETS;
+          const setter = family === 'boulders' ? sliderSetters.v : sliderSetters.r;
+          if (buckets[want] && setter) setter(...buckets[want]);
           popup.setHTML(buildPopupHTML(feature.properties, sourceKey));
           wire();
         });
