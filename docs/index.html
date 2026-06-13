@@ -1110,6 +1110,7 @@
     return s;
   }
   function shouldSkip(k) {
+    if (k.startsWith('_')) return true; // internal props (_climbs, _minz, …)
     if (SKIP_KEYS.has(k)) return true;
     if (SKIP_PREFIXES.some(p => k.startsWith(p))) return true;
     if (SKIP_SUFFIXES.some(s => k.endsWith(s))) return true;
@@ -1670,9 +1671,16 @@
     const tagKeys = PRIMARY_TAG_KEYS[sourceKey] || [];
     let badgeKey = null, badgeVal = null;
     for (const k of tagKeys) { if (props[k]) { badgeKey = k; badgeVal = props[k]; break; } }
-    const badgeText = badgeVal
+    let badgeText = badgeVal
       ? String(badgeVal).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       : cfg.label;
+    let badgeColor = cfg.color;
+    // areas read as their climb type, matching their marker family
+    if (sourceKey === 'climbing_areas') {
+      const boulderArea = (props._boulders || 0) > (props._routes || 0);
+      badgeText = boulderArea ? 'Boulder Area' : 'Route Area';
+      badgeColor = boulderArea ? '#e67e22' : '#e74c3c';
+    }
     const title = name || badgeText;
     const skipInRows = new Set([...SKIP_KEYS, badgeKey].filter(Boolean));
     let customData = {};
@@ -1757,17 +1765,15 @@
         // Without the areas layer the button can only zoom — label it so.
         const canShowClimbs = !!map.getSource('climbing_areas');
         climbAssocHTML = canShowClimbs
-          ? `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to ${climbs.length} climb${climbs.length === 1 ? '' : 's'}</button>`
+          ? `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-mountain-sun"></i> Filter map to this area</button>`
           : `<button class="popup-area-climbs-btn" data-area-key="${escapeHtml(ak)}"><i class="fa-solid fa-magnifying-glass-location"></i> Zoom to this area</button>`;
+        // areas are single-type in practice — one label, one count
         const nRoutes = climbs.filter(c => c.src === 'climbing_routes').length;
-        const nBoulders = climbs.length - nRoutes;
-        const breakdown = [
-          nRoutes ? `${nRoutes} route${nRoutes === 1 ? '' : 's'}` : '',
-          nBoulders ? `${nBoulders} boulder${nBoulders === 1 ? '' : 's'}` : '',
-        ].filter(Boolean).join(' · ');
+        const headLabel = nRoutes === climbs.length ? 'Routes'
+          : nRoutes === 0 ? 'Boulders' : 'Climbs';
         const CAP = 60;
         climbListHTML = `
-          <div class="pcl-head">Climbs here <span class="pcl-head-count">${breakdown}</span></div>
+          <div class="pcl-head">${headLabel} <span class="pcl-head-count">${climbs.length}</span></div>
           <div class="popup-climb-list">
             ${climbs.slice(0, CAP).map(({ f, src }) => {
               const p = f.properties;
@@ -1802,7 +1808,7 @@
     return `
       <div class="popup-header">
         <div class="popup-feature-name">${title}</div>
-        <span class="popup-badge" style="background:${cfg.color}">${badgeText}</span>
+        <span class="popup-badge" style="background:${badgeColor}">${badgeText}</span>
       </div>
       <div class="popup-body">
         ${climbNavHTML}
