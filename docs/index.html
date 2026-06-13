@@ -3223,11 +3223,27 @@
   map.on('style.load', () => {
     hideBasemapCampsites();
     if (!experienceConfig) return;
+    // snapshot the sidebar toggle state — the rebuild recreates rows with
+    // config defaults, and a basemap switch shouldn't reset the map
+    const toggleState = {};
+    document.querySelectorAll('#layer-list .layer-row').forEach(r => {
+      toggleState[r.dataset.source] = r.classList.contains('on');
+    });
     interactionsRegistered = false;
     Object.keys(sourceToMapboxLayers).forEach(k => delete sourceToMapboxLayers[k]);
     Object.keys(layerToSource).forEach(k => delete layerToSource[k]);
     buildLayersFromConfig(experienceConfig.layers);
     registerInteractions();
+    // restore the toggles onto the recreated rows + layers
+    Object.entries(toggleState).forEach(([key, on]) => {
+      const row = document.querySelector(`.layer-row[data-source="${key}"]`);
+      if (row) row.classList.toggle('on', on);
+      setLayerVisible(key, on);
+      if (key === 'pois') {
+        const chips = document.getElementById('poi-filter-chips');
+        if (chips) chips.classList.toggle('visible', on);
+      }
+    });
     experienceConfig.layers.forEach(layerCfg => {
       const key = layerCfg.source_key;
       const src = map.getSource(key);
