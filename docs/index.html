@@ -964,9 +964,9 @@
   const AREA_BADGE_FILTER = ['>', ['coalesce', ['get', '_climbs'], 0], 0];
   // Zoom bands for semantic clustering: hierarchy depth d owns
   // [BAND[d], BAND[d+1]) for its family. Integer edges — ['zoom'] in
-  // filters is only re-evaluated at integer zoom levels. Routes run three
-  // levels later than boulders so their bigger hulls stay up longer.
-  const BAND_START = { routes: [0, 15, 16, 17, 18], boulders: [0, 12, 13, 14, 15] };
+  // filters is only re-evaluated at integer zoom levels. Routes run one
+  // level later than boulders so their bigger hulls stay up longer.
+  const BAND_START = { routes: [0, 13, 14, 15, 16], boulders: [0, 12, 13, 14, 15] };
   // Areas whose climbs span geographically unrelated walls — a convex hull
   // overreaches, so they render as a single point badge (subtree count)
   // during their band instead.
