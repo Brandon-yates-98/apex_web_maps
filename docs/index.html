@@ -2973,7 +2973,16 @@
         });
       });
     });
+    // Band tables follow the TREE a feature hangs in (its root ancestor's
+    // subtree majority), not the feature's own type — a route leaf in the
+    // bouldering tree must appear exactly when its boulder parent's hull
+    // hands off, or its climbs vanish in the band gap. Badge color/family
+    // stays the feature's own type.
     const bandOf = c => BAND_START[c.routes >= c.boulders ? 'routes' : 'boulders'];
+    const bandForRoot = rootId =>
+      bandOf(subtree[rootId] || { routes: 1, boulders: 0 });
+    const rootOf = p => (Array.isArray(p.area_path) && p.area_path.length)
+      ? p.area_path[0] : p.area_id;
     const pathByArea = {};
     areas.features.forEach(f => {
       const p = f.properties;
@@ -2985,7 +2994,7 @@
         p._routes = sc.routes;
         p._boulders = sc.boulders;
         p._climbs = sc.routes + sc.boulders;
-        const band = bandOf(sc);
+        const band = bandForRoot(rootOf(p));
         const d = Math.min(p.depth || 0, band.length - 2);
         p._minz = band[d];
         p._maxz = band[d + 1];
@@ -2996,7 +3005,7 @@
       p._boulders = c.boulders;
       p._climbs = c.routes + c.boulders;
       // leaf badges enter at their depth's band and stay (no _maxz)
-      const band = bandOf(c);
+      const band = bandForRoot(rootOf(p));
       p._minz = band[Math.min(p.depth || 0, band.length - 1)];
     });
     // hulls carry their subtree's counts and live only in their depth's band
@@ -3008,11 +3017,11 @@
       p._routes = c.routes;
       p._boulders = c.boulders;
       p._climbs = c.routes + c.boulders;
-      const band = bandOf(c);
+      if (!p.area_path) p.area_path = pathByArea[p.area_id]; // for inArea()
+      const band = bandForRoot(rootOf(p));
       const d = Math.min(p.depth || 0, band.length - 2);
       p._minz = band[d];
       p._maxz = band[d + 1];
-      if (!p.area_path) p.area_path = pathByArea[p.area_id]; // for inArea()
     });
   }
 
