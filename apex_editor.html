@@ -1012,6 +1012,72 @@
   let editingExpId = null; // null = creating, uuid = editing
   let currentDrawSchema = []; // field_schema for the active draw target layer
 
+  // ── Climbing area semantic clustering (mirrors public map) ───────
+  const BAND_START = { routes: [0, 0, 14, 15, 16], boulders: [0, 12, 13, 14, 15] };
+  const HULL_AS_POINT = new Set(['91a11925-3112-55e9-b5a7-40f4afabb9c4']); // Linkups/Contrivances
+  const HULL_TEXT_WITH_COUNT = ['concat', ['get', 'name'], ' · ', ['to-string', ['get', '_climbs']]];
+
+  function climbAreaChain(p) {
+    if (Array.isArray(p.area_path) && p.area_path.length) return p.area_path;
+    if (p.area_id) return [p.area_id];
+    if (p.area_name) return [p.area_name];
+    return [];
+  }
+
+  function enrichAreaBadges() {
+    const areas = layerCache['climbing_areas'];
+    if (!areas) return;
+    const direct = {}, subtree = {};
+    ['climbing_routes', 'climbing_boulders'].forEach(src => {
+      const isRoute = src === 'climbing_routes';
+      (layerCache[src] || { features: [] }).features.forEach(f => {
+        const p = f.properties;
+        if (p.area_id) {
+          const c = direct[p.area_id] = direct[p.area_id] || { routes: 0, boulders: 0 };
+          if (isRoute) c.routes++; else c.boulders++;
+        }
+        climbAreaChain(p).forEach(aid => {
+          const c = subtree[aid] = subtree[aid] || { routes: 0, boulders: 0 };
+          if (isRoute) c.routes++; else c.boulders++;
+        });
+      });
+    });
+    const bandOf = c => BAND_START[c.routes >= c.boulders ? 'routes' : 'boulders'];
+    const bandForRoot = id => bandOf(subtree[id] || { routes: 1, boulders: 0 });
+    const rootOf = p => (Array.isArray(p.area_path) && p.area_path.length) ? p.area_path[0] : p.area_id;
+    const pathByArea = {};
+    areas.features.forEach(f => {
+      const p = f.properties;
+      pathByArea[p.area_id] = p.area_path;
+      const sc = subtree[p.area_id] || { routes: 0, boulders: 0 };
+      if (HULL_AS_POINT.has(p.area_id)) {
+        p._routes = sc.routes; p._boulders = sc.boulders; p._climbs = sc.routes + sc.boulders;
+        const band = bandForRoot(rootOf(p));
+        const d = Math.min(p.depth || 0, band.length - 2);
+        p._minz = band[d]; p._maxz = band[d + 1];
+        return;
+      }
+      const c = direct[p.area_id] || { routes: 0, boulders: 0 };
+      p._routes = c.routes; p._boulders = c.boulders; p._climbs = c.routes + c.boulders;
+      const band = bandForRoot(rootOf(p));
+      p._minz = band[Math.min(p.depth || 0, band.length - 1)];
+      // leaf areas: no _maxz → stay visible from their band onward
+    });
+    const hulls = layerCache['climbing_area_hulls'];
+    if (hulls) {
+      hulls.features = hulls.features.filter(f => !HULL_AS_POINT.has(f.properties.area_id));
+      hulls.features.forEach(f => {
+        const p = f.properties;
+        const c = subtree[p.area_id] || { routes: 0, boulders: 0 };
+        p._routes = c.routes; p._boulders = c.boulders; p._climbs = c.routes + c.boulders;
+        if (!p.area_path) p.area_path = pathByArea[p.area_id];
+        const band = bandForRoot(rootOf(p));
+        const d = Math.min(p.depth || 0, band.length - 2);
+        p._minz = band[d]; p._maxz = band[d + 1];
+      });
+    }
+  }
+
   // ══ Toast ════════════════════════════════════════════════════
   let toastTimer = null;
   function toast(msg, isError = false) {
@@ -1242,15 +1308,12 @@
             : color;
           const circleSpec = { id: key+'-circle', type: 'circle', source: key,
             paint: { 'circle-color': circleColor,
-              'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 7, 14, 11],
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4.5, 14, 7.5],
               'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-opacity': 0.92 } };
           if (filter) circleSpec.filter = filter;
           map.addLayer(circleSpec);
           mapboxIds.push(key+'-circle');
         } else if (selfBadge) {
-          // thin greenish-white ring peeking ~1px·size around the badge —
-          // matches the rim baked into the route markers (badge ≈ 7.5px·size,
-          // rim ≈ 1px·size → ring radius 8.5·size)
           const ringSpec = { id: key+'-circle', type: 'circle', source: key,
             paint: { 'circle-color': '#eaf6ec',
               'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5.93, 14, 9.37] } };
@@ -1258,28 +1321,82 @@
           map.addLayer(ringSpec);
           mapboxIds.push(key+'-circle');
         }
-        // climbing markers are dense — drawn 25% smaller; the campsite
-        // badge matches them
         const iconScale = baked || selfBadge ? 0.75 : 1;
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
-            // baked: disc radius is 30/64 of the image → 7.5px logical at
-            // size 1; sized to match the old circle layer (7px → 11px)
             'icon-size': baked || selfBadge
               ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
-              : ['interpolate', ['linear'], ['zoom'], 10, 0.55, 14, 0.85],
+              : ['interpolate', ['linear'], ['zoom'], 10, 0.65, 14, 0.98],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
-            'text-field': ['step', ['zoom'], '', 14, ['coalesce', ['get', 'name'], '']],
+            'text-field': ['step', ['zoom'], '', 12, ['coalesce', ['get', 'name'], '']],
             'text-size': 11, 'text-offset': [0, 1.5],
             'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8,
           },
           paint: { 'icon-color': '#ffffff',
-            'text-color': '#333', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } };
+            'text-color': selfBadge ? '#fff' : '#333',
+            'text-halo-color': selfBadge ? '#000' : '#fff',
+            'text-halo-width': selfBadge ? 0.8 : 1.5 } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
         mapboxIds.push(key+'-icon');
+      } else if (key === 'climbing_areas') {
+        // Semantic clustering: hull polygons for parent areas, glyph badges
+        // for leaf walls — mirrors the public map's renderer exactly.
+        const B = ['coalesce', ['get', '_boulders'], 0];
+        const R = ['coalesce', ['get', '_routes'], 0];
+        const routeF = ['<=', B, R], boulderF = ['>', B, R];
+        const inBand = ['all',
+          ['>=', ['zoom'], ['coalesce', ['get', '_minz'], 0]],
+          ['<',  ['zoom'], ['coalesce', ['get', '_maxz'], 24]]];
+        // Editor: no climb-count guard — show all areas including empty walls
+        const guards = extra => filter ? ['all', extra, inBand, filter] : ['all', extra, inBand];
+
+        const HULL_SRC = 'climbing_area_hulls';
+        if (!map.getSource(HULL_SRC)) {
+          map.addSource(HULL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        }
+        const mkHull = (suffix, typeF, tint) => {
+          map.addLayer({ id: `${HULL_SRC}-fill-${suffix}`, type: 'fill', source: HULL_SRC,
+            filter: guards(typeF), paint: { 'fill-color': tint, 'fill-opacity': 0.14 } }, firstSymbol);
+          map.addLayer({ id: `${HULL_SRC}-line-${suffix}`, type: 'line', source: HULL_SRC,
+            filter: guards(typeF), paint: { 'line-color': tint, 'line-width': 1.6, 'line-opacity': 0.85 } }, firstSymbol);
+          map.addLayer({ id: `${HULL_SRC}-label-${suffix}`, type: 'symbol', source: HULL_SRC,
+            filter: guards(typeF),
+            layout: { 'text-field': HULL_TEXT_WITH_COUNT, 'text-size': 11, 'text-max-width': 8 },
+            paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1 } });
+        };
+        mkHull('routes', routeF, '#e74c3c');
+        mkHull('boulders', boulderF, '#e67e22');
+
+        const addBadgeLayer = (id, typeF, img, tint) => map.addLayer({
+          id, type: 'symbol', source: key, filter: guards(typeF),
+          layout: {
+            'icon-image': img,
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6975, 14, 1.1025],
+            'icon-allow-overlap': true, 'icon-ignore-placement': true,
+            'text-field': ['step', ['zoom'], '',
+              14, ['case', ['>', ['get', '_climbs'], 1], ['to-string', ['get', '_climbs']], '']],
+            'text-size': ['interpolate', ['linear'], ['zoom'], 10, 9.5, 14, 11],
+            'text-offset': [1.05, -1.05], 'text-allow-overlap': true,
+          },
+          paint: { 'text-color': '#ffffff', 'text-halo-color': tint, 'text-halo-width': 1.4 } });
+        addBadgeLayer(key+'-badge-routes', routeF, 'dl-carabiner@#e74c3c', '#e74c3c');
+        addBadgeLayer(key+'-badge-boulders', boulderF, 'dl-boulder@#e67e22', '#e67e22');
+
+        const addNameLayer = (id, typeF) => map.addLayer({
+          id, type: 'symbol', source: key, minzoom: 15, filter: guards(typeF),
+          layout: { 'text-field': ['get', 'name'], 'text-size': 11,
+            'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-max-width': 8 },
+          paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 0.8 } });
+        addNameLayer(key+'-name-routes', routeF);
+        addNameLayer(key+'-name-boulders', boulderF);
+
+        mapboxIds.push(key+'-badge-routes', key+'-badge-boulders',
+          key+'-name-routes', key+'-name-boulders',
+          `${HULL_SRC}-fill-routes`, `${HULL_SRC}-line-routes`, `${HULL_SRC}-label-routes`,
+          `${HULL_SRC}-fill-boulders`, `${HULL_SRC}-line-boulders`, `${HULL_SRC}-label-boulders`);
       } else {
         const spec = { id: key+'-circle', type: 'circle', source: key,
           paint: { 'circle-color': color, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
@@ -1567,6 +1684,19 @@
         if (countEl) countEl.textContent = layerCache[key].features.length;
       }
     }));
+    // Climbing area hulls are not an experience layer — load alongside areas,
+    // then bake badge counts + zoom bands into both area and hull features.
+    if (layers.some(l => (l.source_key || l.template_slug) === 'climbing_areas')) {
+      if (!layerCache['climbing_area_hulls']) {
+        const { data } = await db.rpc('get_layer_geojson', { p_source: 'climbing_area_hulls' });
+        if (data) layerCache['climbing_area_hulls'] = data;
+      }
+      enrichAreaBadges();
+      const areaSrc = map.getSource('climbing_areas');
+      if (areaSrc && layerCache['climbing_areas']) areaSrc.setData(layerCache['climbing_areas']);
+      const hullSrc = map.getSource('climbing_area_hulls');
+      if (hullSrc && layerCache['climbing_area_hulls']) hullSrc.setData(layerCache['climbing_area_hulls']);
+    }
   }
 
   // ══ Render experience on map ═════════════════════════════════
@@ -2835,6 +2965,14 @@
       layerCache[sourceKey] = data;
       const src = map.getSource(sourceKey);
       if (src) src.setData(data);
+    }
+    // Recompute badge counts when climbing data changes
+    if (['climbing_routes', 'climbing_boulders', 'climbing_areas'].includes(sourceKey)) {
+      enrichAreaBadges();
+      const areaSrc = map.getSource('climbing_areas');
+      if (areaSrc && layerCache['climbing_areas']) areaSrc.setData(layerCache['climbing_areas']);
+      const hullSrc = map.getSource('climbing_area_hulls');
+      if (hullSrc && layerCache['climbing_area_hulls']) hullSrc.setData(layerCache['climbing_area_hulls']);
     }
   }
 
