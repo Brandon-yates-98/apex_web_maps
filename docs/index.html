@@ -563,6 +563,7 @@
     .g-hard { background: #e67e22; }
     .g-proj { background: #c0392b; }
     .g-none { background: #a8b0b3; }
+    .popup-climbcount { background: rgba(255,255,255,0.14); margin-left: 5px; }
     .pcl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin: 2px 0 5px; }
     .pcl-sort { display: flex; gap: 3px; margin-right: 5px; padding-right: 6px; border-right: 1px solid #e8e8e8; }
     .pcl-tool {
@@ -1875,6 +1876,7 @@
     let climbAssocHTML = '';
     let climbListHTML = '';
     let climbNavHTML = '';
+    let climbCountHTML = '';   // count chip in the popup header (area popups)
     if (isAreaSrc) {
       const ak = areaKeyOf(props);
       // the list respects the sidebar's climb filters (search/type/grade) —
@@ -1893,6 +1895,8 @@
           : nRoutes === 0 ? 'Boulders' : 'Climbs';
         const family = nRoutes === climbs.length ? 'routes'
           : nRoutes === 0 ? 'boulders' : 'mixed';
+        const noun = family === 'routes' ? 'route' : family === 'boulders' ? 'boulder' : 'climb';
+        climbCountHTML = `<span class="popup-badge popup-climbcount">${climbs.length} ${noun}${climbs.length === 1 ? '' : 's'}</span>`;
         const gradePills = family === 'routes'
           ? [['easy', '≤5.8'], ['mod', '5.9–5.10'], ['hard', '5.11'], ['proj', '5.12+']]
           : family === 'boulders'
@@ -1907,7 +1911,7 @@
         const curBucket = family === 'routes' ? rB : family === 'boulders' ? vB
           : rB === vB ? rB : rB === 'all' ? vB : vB === 'all' ? rB : null;
         climbListHTML = `
-          <div class="pcl-head">${headLabel} <span class="pcl-head-count">${climbs.length}</span></div>
+          <div class="pcl-head">${headLabel}</div>
           <div class="pcl-tools" data-family="${family}">
             <div class="pcl-sort">
               <button class="pcl-tool active" data-sort="alpha" title="Sort alphabetically">A–Z</button>
@@ -1953,7 +1957,7 @@
     return `
       <div class="popup-header">
         <div class="popup-feature-name">${title}</div>
-        <span class="popup-badge" style="background:${badgeColor}">${badgeText}</span>
+        <span class="popup-badge" style="background:${badgeColor}">${badgeText}</span>${climbCountHTML}
       </div>
       <div class="popup-body">
         ${climbNavHTML}
