@@ -2484,7 +2484,7 @@
             // baked: disc radius is 30/64 of the image → 7.5px logical at
             // size 1; sized to match the editor's markers (7px → 11px)
             'icon-size': baked
-              ? ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62] // match campsite markers
+              ? ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8] // a bit larger than campsite markers
               : selfBadge
                 ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
                 : ['interpolate', ['linear'], ['zoom'], 10, 0.65, 14, 0.98],
@@ -2668,8 +2668,8 @@
           const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
             layout: {
               'icon-image': baked ? dsIcon + '@' + color : dsIcon,
-              // same baked-disc size as the campsite markers
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62],
+              // a bit larger than the campsite markers
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8],
               'icon-allow-overlap': true, 'icon-ignore-placement': true },
             paint: { 'icon-color': '#ffffff' },
             filter: ['!=', '$type', 'LineString'] };

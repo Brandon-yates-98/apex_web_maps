@@ -1690,7 +1690,7 @@
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
             'icon-size': baked
-              ? ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62] // match campsite markers
+              ? ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8] // a bit larger than campsite markers
               : selfBadge
               ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
               : ['interpolate', ['linear'], ['zoom'], 10, 0.65, 14, 0.98],
@@ -1828,8 +1828,8 @@
           map.addLayer({ id: key+'-icon', type: 'symbol', source: key, filter: iconF,
             layout: {
               'icon-image': baked ? dsIcon + '@' + color : dsIcon,
-              // same baked-disc size as the campsite markers
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62],
+              // a bit larger than the campsite markers
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8],
               'icon-allow-overlap': true, 'icon-ignore-placement': true },
             paint: { 'icon-color': '#ffffff' } });
           mapboxIds.push(key+'-line', key+'-icon');
