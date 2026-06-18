@@ -1437,6 +1437,22 @@
       ctx.beginPath();               // tires
       ctx.arc(22, 45, 3.4, 0, Math.PI * 2); ctx.arc(44, 45, 3.4, 0, Math.PI * 2);
       ctx.fill();
+    } else if (name === 'dl-parking') {
+      // bold "P" — the universal parking pictogram
+      ctx.font = 'bold 46px Arial, Helvetica, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('P', 32, 35);
+    } else if (name === 'dl-restroom') {
+      // restroom sign: a man + woman figure split by a thin divider
+      ctx.beginPath(); ctx.arc(23, 15, 5, 0, Math.PI * 2); ctx.fill(); // man head
+      ctx.fillRect(19.5, 22, 7, 13);                                   // man torso
+      ctx.fillRect(20, 35, 2.6, 11); ctx.fillRect(23.8, 35, 2.6, 11);  // man legs
+      ctx.beginPath(); ctx.arc(43, 15, 5, 0, Math.PI * 2); ctx.fill(); // woman head
+      ctx.beginPath();                                                 // woman dress
+      ctx.moveTo(43, 21); ctx.lineTo(35.5, 39); ctx.lineTo(50.5, 39); ctx.closePath(); ctx.fill();
+      ctx.fillRect(40, 39, 2.6, 7); ctx.fillRect(43.8, 39, 2.6, 7);    // woman legs
+      ctx.fillRect(32.4, 11, 1.3, 35);                                 // divider
     } else if (!tint) {
       ctx.beginPath();
       ctx.arc(S / 2, S / 2, S / 2 - 5, 0, Math.PI * 2);
@@ -1673,7 +1689,9 @@
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key,
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
-            'icon-size': baked || selfBadge
+            'icon-size': baked
+              ? ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62] // match campsite markers
+              : selfBadge
               ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
               : ['interpolate', ['linear'], ['zoom'], 10, 0.65, 14, 0.98],
             'icon-allow-overlap': true,
@@ -1800,9 +1818,26 @@
         const ptF = filter ? ['all', ['==', '$type', 'Point'], filter] : ['==', '$type', 'Point'];
         map.addLayer({ id: key+'-line', type: 'line', source: key, filter: lineF,
           paint: { 'line-color': color, 'line-width': 1.5 } });
-        map.addLayer({ id: key+'-circle', type: 'circle', source: key, filter: ptF,
-          paint: { 'circle-color': color, 'circle-radius': 5, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff' } });
-        mapboxIds.push(key+'-line', key+'-circle');
+        // A layer carrying default_style.icon (e.g. parking) badges its point
+        // features AND polygon centroids (symbol placement defaults to 'point');
+        // otherwise points fall back to a plain circle.
+        const dsIcon = layerCfg.default_style && layerCfg.default_style.icon;
+        if (dsIcon) {
+          const baked = dsIcon.indexOf('dl-') === 0;
+          const iconF = filter ? ['all', ['!=', '$type', 'LineString'], filter] : ['!=', '$type', 'LineString'];
+          map.addLayer({ id: key+'-icon', type: 'symbol', source: key, filter: iconF,
+            layout: {
+              'icon-image': baked ? dsIcon + '@' + color : dsIcon,
+              // same baked-disc size as the campsite markers
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62],
+              'icon-allow-overlap': true, 'icon-ignore-placement': true },
+            paint: { 'icon-color': '#ffffff' } });
+          mapboxIds.push(key+'-line', key+'-icon');
+        } else {
+          map.addLayer({ id: key+'-circle', type: 'circle', source: key, filter: ptF,
+            paint: { 'circle-color': color, 'circle-radius': 5, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff' } });
+          mapboxIds.push(key+'-line', key+'-circle');
+        }
       }
     }
 
