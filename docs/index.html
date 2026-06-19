@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Devil's Lake Community Map</title>
   <meta name="description" content="Interactive community map of Devil's Lake — trails, climbing, camping, and more. Works offline — save the map and take it to the crag." />
   <meta property="og:type" content="website" />
@@ -46,7 +46,8 @@
       border-bottom: 3px solid #9bc23c;
       display: flex;
       align-items: center;
-      padding: 0 16px;
+      /* viewport-fit=cover: clear the notch/status bar and side insets */
+      padding: env(safe-area-inset-top, 0px) calc(16px + env(safe-area-inset-right, 0px)) 0 calc(16px + env(safe-area-inset-left, 0px));
       gap: 14px;
       z-index: 100;
       box-shadow: 0 2px 16px rgba(0,0,0,0.5);
@@ -127,6 +128,7 @@
         top: 0; left: 0; bottom: 0;
         transform: translateX(-100%);
         box-shadow: none;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
       #left-panel.open {
         transform: translateX(0);
@@ -134,7 +136,16 @@
       }
       #menu-toggle { display: flex; }
       .header-pills { display: none; }
+      /* Bigger touch targets on phones */
+      .poi-chip, .ff-preset { padding: 7px 12px; font-size: 11px; }
+      .layer-row { min-height: 42px; }
+      .feature-sheet-close { width: 44px; height: 44px; }
     }
+
+    /* Embed mode (?embed=1): chrome-free inline map for iframing on partner pages */
+    body.embed #site-header,
+    body.embed #left-panel,
+    body.embed #menu-toggle { display: none !important; }
 
     .panel-section {
       padding: 14px 12px 12px;
@@ -206,13 +217,19 @@
     .layer-group:first-child .layer-group-label { padding-top: 2px; margin-top: 0; }
     .layer-group-label > span { flex: 1; }
     .layer-group-label:hover { color: rgba(155,194,60,0.65); }
+    .group-toggle {
+      flex: 0 0 auto; background: none; border: none; cursor: pointer;
+      color: rgba(155,194,60,0.5); font-size: 10px; line-height: 1; padding: 3px 6px;
+      transition: color 0.15s;
+    }
+    .group-toggle:hover { color: #9bc23c; }
+    .group-toggle.off { color: rgba(255,255,255,0.22); }
     .layer-group-label .ps-caret {
       font-size: 8px; color: rgba(155,194,60,0.5);
       transition: transform 0.18s ease;
     }
     .layer-group.collapsed .ps-caret { transform: rotate(-90deg); }
     .layer-group.collapsed .layer-row,
-    .layer-group.collapsed .camp-group-footer,
     .layer-group.collapsed .poi-filters { display: none; }
 
     .layer-row {
@@ -423,10 +440,8 @@
     #climb-filter-chip:hover { border-color: rgba(231,76,60,0.6); }
     #climb-filter-chip:hover .cfc-x { color: #e74c3c; }
 
-    /* ── Camping group filter footer (presets + price, under the layer rows) ── */
-    .camp-group-footer { padding: 4px 6px 10px 14px; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.05); }
-    .camp-footer-label { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin: 4px 0 7px; }
-    .camp-group-footer .ff-presets { margin-top: 2px; }
+    /* ── Campsite filters (own section at the top of the sidebar) ── */
+    .camp-filters .ff-presets { margin-top: 2px; }
     .camp-price-filter { display: none; }
     .camp-price-filter.visible { display: block; }
     .df-row { margin-bottom: 12px; }
@@ -721,7 +736,7 @@
 
     /* ─── On-map basemap switcher (traditional tile thumbnail) ─── */
     #basemap-switcher {
-      position: absolute; left: 12px; bottom: 12px; z-index: 5;
+      position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 5;
       width: 66px; height: 66px; padding: 0; overflow: hidden;
       border-radius: 8px; border: 2px solid #fff; cursor: pointer;
       background-color: #2c3e50; background-size: cover; background-position: center;
@@ -750,8 +765,8 @@
        MAP
     ════════════════════════════════════ */
     #map { flex: 1; position: relative; }
-    .mapboxgl-ctrl-top-right { top: 10px; right: 10px; }
-    .mapboxgl-ctrl-bottom-right { bottom: 30px; right: 10px; }
+    .mapboxgl-ctrl-top-right { top: 10px; right: calc(10px + env(safe-area-inset-right, 0px)); }
+    .mapboxgl-ctrl-bottom-right { bottom: calc(30px + env(safe-area-inset-bottom, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
 
     /* ════════════════════════════════════
        LOADING SCREEN
@@ -807,6 +822,134 @@
     .mapboxgl-popup-close-button { color: rgba(255,255,255,0.6) !important; font-size: 18px !important; line-height: 1 !important; padding: 5px 8px !important; top: 0 !important; right: 0 !important; }
     .mapboxgl-popup-close-button:hover { color: #fff !important; background: rgba(255,255,255,0.12) !important; border-radius: 0 8px 0 4px !important; }
 
+    /* ─── Mobile feature bottom-sheet (small screens only; see #feature-sheet) ─── */
+    #feature-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 40;
+      display: none; flex-direction: column;
+      max-height: 70dvh;
+      background: #0d1b0d;                 /* injected .popup-header/.popup-body supply their own colors */
+      border-top: 2px solid #9bc23c;
+      border-radius: 14px 14px 0 0;
+      box-shadow: 0 -6px 24px rgba(0,0,0,0.45);
+      transform: translateY(110%);
+      transition: transform 0.25s ease;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: 'Inter', sans-serif;
+    }
+    @media (max-width: 600px) { #feature-sheet { display: flex; } }
+    #feature-sheet.open { transform: translateY(0); }
+    .feature-sheet-handle {
+      width: 40px; height: 4px; border-radius: 2px; flex-shrink: 0;
+      background: rgba(255,255,255,0.25); margin: 9px auto 5px; cursor: grab;
+      touch-action: none;
+    }
+    .feature-sheet-close {
+      position: absolute; top: 6px; right: 8px; z-index: 2;
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.08); border: none; border-radius: 8px;
+      color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer;
+    }
+    .feature-sheet-close:active { background: rgba(255,255,255,0.16); }
+    .feature-sheet-content { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #feature-sheet .popup-header { border-radius: 0; }
+
+    /* ─── Experience top bar (primary functionality over the map) ─── */
+    #exp-bar {
+      position: absolute; z-index: 45;
+      top: calc(12px + env(safe-area-inset-top, 0px));
+      left: 0; right: 0; margin: 0 auto;   /* center WITHOUT transform — a transform here would re-anchor the position:fixed mobile sheets to the bar instead of the viewport */
+      width: fit-content; max-width: calc(100% - 24px);   /* size to content; the slider matches the chips' width */
+      font-family: 'Inter', sans-serif;
+    }
+    .exp-bar-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+      background: rgba(14,22,12,0.92); backdrop-filter: blur(6px);
+      border: 1px solid rgba(155,194,60,0.35); border-radius: 12px;
+      padding: 15px 18px; box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    }
+    .exp-search-wrap { position: relative; flex: 0 1 280px; display: flex; align-items: center; min-width: 0; }
+    .exp-search-icon { position: absolute; left: 11px; font-size: 11px; color: rgba(155,194,60,0.7); pointer-events: none; }
+    .exp-search-input {
+      width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 9px 28px; color: #fff; font-size: 12.5px; outline: none; font-family: inherit;
+    }
+    .exp-search-input::placeholder { color: rgba(255,255,255,0.3); }
+    .exp-search-input:focus { border-color: rgba(155,194,60,0.5); background: rgba(155,194,60,0.06); }
+    .exp-clear-btn { position: absolute; right: 6px; background: none; border: none; color: rgba(255,255,255,0.45); font-size: 16px; line-height: 1; cursor: pointer; padding: 4px 6px; }
+    .exp-bar-btn {
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(155,194,60,0.14); color: #b6d96a;
+      border: 1px solid rgba(155,194,60,0.4); border-radius: 8px;
+      padding: 8px 11px; font-size: 11px; font-weight: 800; cursor: pointer; font-family: inherit; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .exp-bar-btn:hover { background: rgba(155,194,60,0.24); }
+    .exp-bar-btn.active { background: rgba(155,194,60,0.3); border-color: rgba(155,194,60,0.7); color: #cfe3a8; }
+    .exp-count { font-size: 10px; opacity: 0.85; }
+
+    .exp-autocomplete {
+      display: none; list-style: none; margin: 6px 0 0; padding: 4px;
+      background: rgba(14,22,12,0.97); border: 1px solid rgba(155,194,60,0.3);
+      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 320px; overflow-y: auto;
+    }
+    .exp-autocomplete.open { display: block; }
+    .exp-autocomplete li {
+      display: flex; align-items: baseline; gap: 8px; justify-content: space-between;
+      padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; color: #e6efd4;
+    }
+    .exp-autocomplete li:hover { background: rgba(155,194,60,0.16); }
+    .exp-autocomplete mark { background: rgba(155,194,60,0.4); color: #fff; border-radius: 2px; }
+    .exp-ac-meta { font-size: 11px; color: #9bc23c; font-weight: 700; flex: 0 0 auto; }
+
+    /* Inline, always-visible, compact filter cluster to the right of the search */
+    /* Filters stack to the right of the search: price label + value, a full-width
+       slider across the top, then the chips beneath it. */
+    .exp-filters { display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; min-width: 0; }
+    .exp-filters .camp-filters { display: flex; flex-direction: column; gap: 8px; }   /* vertical space between the slider and the chips */
+    .exp-filters .camp-price-filter.visible { display: block; }
+    .exp-filters .camp-price-filter .df-row { margin: 0; display: flex; flex-direction: column; gap: 5px; }
+    .exp-filters .camp-price-filter .df-label { margin: 0; font-size: 10px; }
+    .exp-filters .camp-price-filter .df-val { font-size: 11px; }
+    .exp-filters .df-slider { width: 100%; }   /* span the full width, across the top of the chips */
+    .exp-filters #df-result-count { display: none; }
+    .exp-filters .ff-presets { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; justify-content: center; }
+
+    .exp-list {
+      display: none; margin-top: 6px; padding: 4px;
+      background: rgba(14,22,12,0.97); border: 1px solid rgba(155,194,60,0.3);
+      border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 50dvh; overflow-y: auto;
+    }
+    .exp-list.open { display: block; }
+    .exp-row {
+      display: flex; align-items: center; gap: 8px; justify-content: space-between; width: 100%;
+      text-align: left; padding: 10px; border: none; border-radius: 7px; background: none;
+      color: #e6efd4; font-size: 12.5px; cursor: pointer; font-family: inherit;
+    }
+    .exp-row:hover { background: rgba(155,194,60,0.14); }
+    .exp-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exp-row-meta { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #9bc23c; }
+    .exp-list-empty { padding: 14px; text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; }
+
+    /* When the bar is present, push map controls below it so they never collide */
+    body.has-exp-bar .mapboxgl-ctrl-top-right,
+    body.has-exp-bar .mapboxgl-ctrl-top-left { top: calc(var(--exp-bar-h, 56px) + 20px + env(safe-area-inset-top, 0px)); }
+    body.embed #exp-bar { display: none !important; }
+
+    @media (max-width: 600px) {
+      #exp-bar { top: calc(8px + env(safe-area-inset-top, 0px)); max-width: calc(100% - 16px); }
+      .exp-bar-row { flex-wrap: wrap; }   /* allow wrapping only on phones */
+      .exp-bar-btn { padding: 9px 10px; }
+      /* List opens as a bottom sheet on phones; filters stay inline in the bar */
+      .exp-list {
+        position: fixed; left: 0; right: 0; bottom: 0; top: auto; margin: 0; display: block;
+        border-radius: 14px 14px 0 0; border: none; border-top: 2px solid #9bc23c;
+        max-height: 75dvh; overflow-y: auto; z-index: 46;
+        transform: translateY(110%); transition: transform 0.25s ease;
+        padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      }
+      .exp-list.open { transform: translateY(0); }
+    }
+
     /* ─── Error state ─── */
     #error-screen {
       display: none;
@@ -831,6 +974,14 @@
   <div id="lb-caption"></div>
   <div id="lb-counter"></div>
   <button id="lb-next" aria-label="Next photo">&#8250;</button>
+</div>
+
+<!-- ── Mobile feature bottom-sheet (replaces anchored popups on small screens;
+     the same buildPopupHTML content is mounted here and wired by openFeaturePopup) ── -->
+<div id="feature-sheet" role="dialog" aria-modal="false" aria-label="Feature details">
+  <div class="feature-sheet-handle" aria-hidden="true"></div>
+  <button class="feature-sheet-close" aria-label="Close">&#x2715;</button>
+  <div class="feature-sheet-content"></div>
 </div>
 
 <!-- ── Photo submission modal ── -->
@@ -900,6 +1051,13 @@
       <select id="experience-select" class="cf-select"></select>
     </div>
 
+    <!-- Campsite filters — their own section at the top of the sidebar, above
+         Layers. Body populated by buildLayersFromConfig when campsites exist. -->
+    <div class="panel-section" id="camp-filter-section" style="display:none">
+      <div class="panel-section-title">Campground Filters</div>
+      <div id="camp-filter-body"></div>
+    </div>
+
     <div class="panel-section" id="layers-section">
       <div class="panel-section-title">Layers<button id="toggle-all-layers" class="layer-toggle-all" title="Show / hide all layers"><i class="fa-solid fa-eye"></i> All</button></div>
       <div id="layer-list"><!-- populated by buildLayersFromConfig --></div>
@@ -950,8 +1108,8 @@
     </div>
 
     <!-- Custom (ad-hoc) filter builder. The predefined saved-filter presets
-         (#ff-presets) render in the Camping group footer, built in
-         buildLayersFromConfig / appendCampingFilters. -->
+         (#ff-presets) render in the Campground Filters section at the top of
+         the sidebar, built in buildLayersFromConfig / buildCampingFilters. -->
     <div id="feature-filter-panel" class="panel-section collapsible">
       <div class="panel-section-title">Custom Filter<i class="fa-solid fa-chevron-down ps-caret"></i></div>
 
@@ -1002,6 +1160,23 @@
     <button id="climb-filter-chip" style="display:none" title="Clear climbing filters">
       <i class="fa-solid fa-filter"></i> <span id="cfc-label"></span> <span class="cfc-x">×</span>
     </button>
+
+    <!-- Experience top bar: an experience's primary functionality (search ·
+         filters · list) pinned to the top of the map. Shown when the experience
+         sets a primary_layer; built/wired in initExperienceBar(). -->
+    <div id="exp-bar" style="display:none">
+      <div class="exp-bar-row">
+        <div class="exp-search-wrap">
+          <i class="fa-solid fa-magnifying-glass exp-search-icon"></i>
+          <input type="text" id="exp-search" class="exp-search-input" autocomplete="off" placeholder="Search…" />
+          <button id="exp-search-clear" class="exp-clear-btn" aria-label="Clear search" style="display:none">×</button>
+        </div>
+        <div id="exp-filters" class="exp-filters"></div>
+        <button id="exp-list-btn" class="exp-bar-btn"><i class="fa-solid fa-list-ul"></i> List <span id="exp-list-count" class="exp-count"></span></button>
+      </div>
+      <ul id="exp-suggestions" class="exp-autocomplete" role="listbox"></ul>
+      <div id="exp-list" class="exp-list"></div>
+    </div>
   </div>
 
 </main>
@@ -1677,6 +1852,7 @@
     }
     const resetBtn = document.getElementById('df-reset');
     if (resetBtn) resetBtn.style.display = active.length ? 'block' : 'none';
+    refreshExpList();
   }
 
   function initCampFilter(layers) {
@@ -1766,6 +1942,159 @@
       });
     });
     return out;
+  }
+
+  // Generic name search over any layer's cached features (experience bar).
+  // Returns up to 8 unique {name, id, meta} matches.
+  function buildFeatureSuggestions(layerKey, q) {
+    if (!q) return [];
+    const ql = q.toLowerCase();
+    const seen = new Set();
+    const out = [];
+    (layerCache[layerKey] ? layerCache[layerKey].features : []).forEach(f => {
+      if (out.length >= 8) return;
+      const p = f.properties || {};
+      const name = (p.name || '').trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      if (!name.toLowerCase().includes(ql)) return;
+      seen.add(name.toLowerCase());
+      out.push({ name, id: p.id, meta: p.min_price != null ? `$${p.min_price}` : '' });
+    });
+    return out;
+  }
+
+  // ── Experience top bar (search · filters · list over the map) ──
+  // Generic for any experience that sets primary_layer. Reuses the price/preset
+  // filters, openFeaturePopup, and the condMatches predicate.
+  let expPrimaryLayer = null;
+  let _expBarWired = false;
+
+  // Read-side mirror of the active map filters (price range + presets), used to
+  // build the list + count. The map keeps using setData/setFilter as before.
+  function featureMatchesActiveFilters(props, layerKey) {
+    for (const s of CAMP_SLIDERS) {
+      if (campFilter[s.key] != null) {
+        const v = props[s.prop];
+        if (!(v != null && v <= campFilter[s.key])) return false;
+      }
+    }
+    for (const f of savedFilters) {
+      if (!activePresetIds.has(f.id) || f.target !== layerKey) continue;
+      const conds = f.conditions || [];
+      const ok = f.match === 'any' ? conds.some(c => condMatches(c, props)) : conds.every(c => condMatches(c, props));
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  // Rebuild the feature list (active filters + search query) and the List · N count.
+  function refreshExpList() {
+    if (!expPrimaryLayer) return;
+    const listEl = document.getElementById('exp-list');
+    const countEl = document.getElementById('exp-list-count');
+    const cached = layerCache[expPrimaryLayer];
+    const searchEl = document.getElementById('exp-search');
+    const q = (searchEl && searchEl.value || '').trim().toLowerCase();
+    let feats = (cached ? cached.features : []).filter(f => {
+      const p = f.properties || {};
+      if (q && !(p.name || '').toLowerCase().includes(q)) return false;
+      return featureMatchesActiveFilters(p, expPrimaryLayer);
+    });
+    feats = feats.slice().sort((a, b) => {
+      const an = (a.properties.name || '').trim(), bn = (b.properties.name || '').trim();
+      if (!an !== !bn) return an ? -1 : 1;   // named entries before unnamed
+      return an.localeCompare(bn, undefined, { numeric: true });
+    });
+    if (countEl) countEl.textContent = feats.length;
+    if (!listEl) return;
+    listEl.innerHTML = feats.length ? feats.map(f => {
+      const p = f.properties;
+      const meta = p.min_price != null ? `$${p.min_price}` : '';
+      return `<button class="exp-row" data-id="${escapeHtml(String(p.id))}">`
+        + `<span class="exp-row-name">${escapeHtml(p.name || '(unnamed)')}</span>`
+        + (meta ? `<span class="exp-row-meta">${escapeHtml(meta)}</span>` : '')
+        + '</button>';
+    }).join('') : '<div class="exp-list-empty">No matches</div>';
+    listEl.querySelectorAll('.exp-row').forEach(btn => btn.addEventListener('click', () => {
+      listEl.classList.remove('open');
+      document.getElementById('exp-list-btn').classList.remove('active');
+      flyToFeature(expPrimaryLayer, btn.dataset.id);
+    }));
+  }
+
+  function setupExperienceBar() {
+    if (_expBarWired) return;
+    _expBarWired = true;
+    const input = document.getElementById('exp-search');
+    const clearBtn = document.getElementById('exp-search-clear');
+    const sugg = document.getElementById('exp-suggestions');
+    const listEl = document.getElementById('exp-list');
+    const lBtn = document.getElementById('exp-list-btn');
+    const closeSugg = () => { sugg.classList.remove('open'); sugg.innerHTML = ''; };
+
+    function pick(name, id) {
+      input.value = name; clearBtn.style.display = '';
+      closeSugg();
+      if (id != null && id !== '') flyToFeature(expPrimaryLayer, id);
+      refreshExpList();
+    }
+    function render(q) {
+      const items = buildFeatureSuggestions(expPrimaryLayer, q);
+      if (!q || !items.length) { closeSugg(); return; }
+      sugg.innerHTML = items.map(it =>
+        `<li role="option" data-id="${escapeHtml(String(it.id))}" data-name="${escapeHtml(it.name)}">`
+        + `<span>${cfHighlight(it.name, q)}</span>`
+        + (it.meta ? `<span class="exp-ac-meta">${escapeHtml(it.meta)}</span>` : '')
+        + '</li>').join('');
+      sugg.classList.add('open');
+      sugg.querySelectorAll('li').forEach(li => li.addEventListener('mousedown', e => {
+        e.preventDefault(); pick(li.dataset.name, li.dataset.id);
+      }));
+    }
+    let deb = null;
+    input.addEventListener('input', e => {
+      const v = e.target.value;
+      clearBtn.style.display = v ? '' : 'none';
+      clearTimeout(deb); deb = setTimeout(() => render(v.trim()), 120);
+      refreshExpList();
+    });
+    input.addEventListener('focus', () => { if (input.value.trim()) render(input.value.trim()); });
+    clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.style.display = 'none'; closeSugg(); refreshExpList(); });
+    document.addEventListener('click', e => { if (sugg && !sugg.contains(e.target) && e.target !== input) closeSugg(); });
+
+    if (lBtn) lBtn.addEventListener('click', () => {
+      const open = listEl.classList.toggle('open');
+      lBtn.classList.toggle('active', open);
+      if (open) refreshExpList();
+    });
+    window.addEventListener('resize', syncBarHeight);
+  }
+
+  // Publish the bar's actual height so the map controls can sit below it
+  // (the full-width bar would otherwise overlap the top-right controls).
+  function syncBarHeight() {
+    const bar = document.getElementById('exp-bar');
+    if (bar) document.documentElement.style.setProperty('--exp-bar-h', (bar.offsetHeight || 56) + 'px');
+  }
+
+  // Show + wire the bar for the experience's primary_layer (filters DOM is
+  // mounted into #exp-filters by buildLayersFromConfig). No-op if none set.
+  function initExperienceBar() {
+    const bar = document.getElementById('exp-bar');
+    if (!bar) return;
+    const exp = experienceConfig && experienceConfig.experience;
+    const pl = exp && exp.primary_layer;
+    expPrimaryLayer = (pl && layerCache[pl] && layerCache[pl].features && layerCache[pl].features.length) ? pl : null;
+    if (!expPrimaryLayer) { bar.style.display = 'none'; document.body.classList.remove('has-exp-bar'); return; }
+    bar.style.display = '';
+    document.body.classList.add('has-exp-bar');
+    const meta = layerMeta[expPrimaryLayer];
+    const label = (meta && meta.label) ? meta.label.toLowerCase() : 'features';
+    const input = document.getElementById('exp-search');
+    if (input) input.placeholder = `Search ${label}…`;
+    setupExperienceBar();
+    refreshExpList();
+    requestAnimationFrame(syncBarHeight);
   }
 
   // ── Climbing filter event wiring (called once) ────────────────
@@ -2156,12 +2485,18 @@
   // the real offline detection, and usedOfflineStyle the real offline signal.
   let usedOfflineStyle = navigator.onLine === false;
 
+  // Embed mode (?embed=1): trim chrome and use cooperative gestures so the map
+  // doesn't hijack page scroll when iframed on a partner/Apex page.
+  const IS_EMBED = new URLSearchParams(location.search).get('embed') === '1';
+  if (IS_EMBED) document.body.classList.add('embed');
+
   const map = new mapboxgl.Map({
     container: 'map',
     style: usedOfflineStyle ? OFFLINE_STYLE : 'mapbox://styles/mapbox/outdoors-v12',
     center: [-89.73, 43.43],
     zoom: 11,
     attributionControl: false,
+    cooperativeGestures: IS_EMBED,
   });
   // Compact (ⓘ button) attribution — basemap credits flow in from the active
   // style/source; data + icon credits ride along as customAttribution.
@@ -2585,24 +2920,24 @@
         // fetched alongside this layer and tied to its visibility (pushed to mapboxIds).
         const CG = 'campground_hulls';
         if (!map.getSource(CG)) map.addSource(CG, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 14,
-          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.18, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 14,
-          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 14,
+        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 15,
+          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.18, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 15,
+          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.9, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 15,
           layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-max-width': 8 },
           paint: { 'text-color': '#fff', 'text-halo-color': '#1b3a1b', 'text-halo-width': 1.4 } });
         // Spur "driveways" (site → nearest road) are now ordinary roads
-        // (source='roads', highway='service'; migrations 028/029) — they render
+        // (source='roads', highway='service'; migrations 028/033) — they render
         // and toggle with the roads layer, no longer a campsite companion.
         // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
         const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
-        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 13.5,
+        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
           layout: { 'icon-image': ICON,
-            // Icons appear at z13.5 (the campground hull owns lower zoom); from
-            // there they grow steadily as you zoom in, ~0.56 at appearance up to
-            // 1.0 at z19 (the stop is extended past z16 so they keep growing).
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 13.5, 0.56, 19, 1.0],
+            // Icons appear at z14.5 (the campground hull owns lower zoom and fades
+            // out by z15); from there they grow as you zoom in, ~0.56 at appearance
+            // up to 1.0 at z19 (the stop is extended past z16 so they keep growing).
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.56, 19, 1.0],
             'icon-allow-overlap': true, 'icon-ignore-placement': true } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
@@ -2726,6 +3061,7 @@
     const anyActive = activePresetIds.size > 0 || !!(adhocFilter && adhocFilter.expr);
     const clearBtn = document.getElementById('ff-clear');
     if (clearBtn) clearBtn.style.display = anyActive ? 'block' : 'none';
+    refreshExpList();
   }
 
   function clearAllFeatureFilters() {
@@ -2742,8 +3078,9 @@
     activePresetIds.clear();
     adhocFilter = null;
 
-    // Predefined saved-filter presets — rendered into the Camping group footer
-    // (#ff-presets, built by appendCampingFilters), independent of the custom
+    // Predefined saved-filter presets — rendered into the Campground Filters
+    // section at the top of the sidebar (#ff-presets, built by
+    // buildCampingFilters), independent of the custom
     // panel below. Populated here because this runs after buildLayersFromConfig.
     const presetWrap = document.getElementById('ff-presets');
     if (presetWrap) {
@@ -2917,35 +3254,66 @@
       groupEl.className = 'layer-group' + (startOpen ? '' : ' collapsed');
       const header = document.createElement('div');
       header.className = 'layer-group-label';
-      header.innerHTML = `<span>${groupName}</span><i class="fa-solid fa-chevron-down ps-caret"></i>`;
+      header.innerHTML = `<span>${groupName}</span>`
+        + `<button class="group-toggle${startOpen ? '' : ' off'}" title="Show / hide all in ${groupName}" aria-label="Toggle ${groupName}"><i class="fa-solid ${startOpen ? 'fa-eye' : 'fa-eye-slash'}"></i></button>`
+        + `<i class="fa-solid fa-chevron-down ps-caret"></i>`;
       header.addEventListener('click', () => groupEl.classList.toggle('collapsed'));
+      // Group eye: toggle every layer row in this group at once (reusing each
+      // row's own click handler + side effects), like the global "All" button.
+      const gToggle = header.querySelector('.group-toggle');
+      gToggle.addEventListener('click', e => {
+        e.stopPropagation();
+        const rows = [...groupEl.querySelectorAll('.layer-row')];
+        if (!rows.length) return;
+        const turnOn = rows.some(r => !r.classList.contains('on'));
+        rows.forEach(r => { if (r.classList.contains('on') !== turnOn) r.click(); });
+        gToggle.classList.toggle('off', !turnOn);
+        gToggle.querySelector('i').className = `fa-solid ${turnOn ? 'fa-eye' : 'fa-eye-slash'}`;
+        if (turnOn) groupEl.classList.remove('collapsed');  // reveal just-enabled rows
+      });
       groupEl.appendChild(header);
       groupLayers.forEach(layerCfg => renderLayerRow(layerCfg, groupEl));
-      // The Camping group carries its filters at the bottom, under its rows:
-      // the predefined (saved) filter presets + the max-nightly-price slider.
-      if (groupLayers.some(l => l.source_key === CAMPING_SOURCE)) appendCampingFilters(groupEl);
       listEl.appendChild(groupEl);
     });
 
-    // Camping group footer: predefined filter presets (populated later by
-    // initFeatureFilters into #ff-presets) + the max-nightly-price slider
-    // (configured by initCampFilter). Rebuilt with the list, so #ff-presets is
+    // Campsite filters live in their own section at the TOP of the sidebar
+    // (#camp-filter-section, outside the Layers list), shown only when the
+    // campsites layer is present. Rebuilt with the list so #ff-presets is
     // recreated fresh each time and the init passes that run afterward find it.
-    function appendCampingFilters(groupEl) {
-      const footer = document.createElement('div');
-      footer.className = 'camp-group-footer';
-      footer.innerHTML = `
-        <div class="camp-footer-label">Campground Filters</div>
+    // Where the price slider + presets live: in the top-of-map experience bar
+    // when the experience sets a primary_layer, else the sidebar section
+    // (fallback). Built in exactly one place so #df-price / #ff-presets are unique.
+    const campSection = document.getElementById('camp-filter-section');
+    const campBody = document.getElementById('camp-filter-body');
+    const expFiltersEl = document.getElementById('exp-filters');
+    const primaryLayer = (experienceConfig.experience && experienceConfig.experience.primary_layer) || null;
+    if (campBody) campBody.innerHTML = '';
+    if (expFiltersEl) expFiltersEl.innerHTML = '';
+    if (primaryLayer && expFiltersEl) {
+      expFiltersEl.appendChild(buildCampingFilters());           // top-of-map bar hosts the filters
+      if (campSection) campSection.style.display = 'none';
+    } else if (campSection && campBody && layers.some(l => l.source_key === CAMPING_SOURCE)) {
+      campBody.appendChild(buildCampingFilters());               // sidebar fallback
+      campSection.style.display = '';
+    } else if (campSection) {
+      campSection.style.display = 'none';
+    }
+
+    // The max-price slider + the predefined filter presets (populated later by
+    // initFeatureFilters into #ff-presets; configured by initCampFilter).
+    function buildCampingFilters() {
+      const box = document.createElement('div');
+      box.className = 'camp-filters';
+      box.innerHTML = `
         <div class="camp-price-filter">
           <div class="df-row">
             <div class="df-label"><span><i class="fa-solid fa-dollar-sign"></i> Max Price (per night)</span><span id="df-price-val" class="df-val">Any</span></div>
             <input type="range" id="df-price" class="df-slider" min="0" max="100" step="5" value="100" />
           </div>
           <div id="df-result-count" class="cf-result-count"></div>
-          <button id="df-reset" class="cf-reset-btn" style="display:none">Reset</button>
         </div>
         <div id="ff-presets" class="ff-presets"></div>`;
-      groupEl.appendChild(footer);
+      return box;
     }
 
     // Build one sidebar row (or the climbing-areas split) into `container`.
@@ -3120,20 +3488,63 @@
     });
   }
 
+  // True on phone-width screens — feature details render as a bottom sheet
+  // there instead of an anchored popup.
+  const isMobile = () => window.matchMedia('(max-width: 600px)').matches;
+
+  // Bottom-sheet surface for mobile. Exposes the subset of the mapboxgl.Popup
+  // API that openFeaturePopup's wire() uses (getElement/setHTML/remove), so the
+  // same content + handlers work on phones with no duplicated logic.
+  let _sheetWired = false;
+  function openFeatureSheet(html) {
+    const sheet = document.getElementById('feature-sheet');
+    const content = sheet.querySelector('.feature-sheet-content');
+    content.innerHTML = html;
+    content.scrollTop = 0;
+    requestAnimationFrame(() => sheet.classList.add('open'));
+    if (!_sheetWired) {
+      _sheetWired = true;
+      sheet.querySelector('.feature-sheet-close')
+        .addEventListener('click', () => sheet.classList.remove('open'));
+      // swipe the handle down to dismiss
+      const handle = sheet.querySelector('.feature-sheet-handle');
+      let startY = null;
+      handle.addEventListener('touchstart', e => {
+        startY = e.touches[0].clientY; sheet.style.transition = 'none';
+      }, { passive: true });
+      handle.addEventListener('touchmove', e => {
+        if (startY == null) return;
+        sheet.style.transform = `translateY(${Math.max(0, e.touches[0].clientY - startY)}px)`;
+      }, { passive: true });
+      handle.addEventListener('touchend', e => {
+        sheet.style.transition = ''; sheet.style.transform = '';
+        if (startY != null && e.changedTouches[0].clientY - startY > 80) sheet.classList.remove('open');
+        startY = null;
+      });
+    }
+    return {
+      getElement: () => sheet,
+      setHTML: (h) => { content.innerHTML = h; content.scrollTop = 0; },
+      remove: () => sheet.classList.remove('open'),
+    };
+  }
+
   // Open a feature popup and wire its interactive parts. Used by map clicks
   // and by in-popup navigation (area climb lists, prev/next stepping), which
-  // chain popups with a flyTo between them.
+  // chain popups with a flyTo between them. On mobile it renders as a bottom
+  // sheet (same content + wiring) instead of an anchored popup.
   function openFeaturePopup(feature, sourceKey, lngLat) {
-    const popup = new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: '290px' })
-      .setLngLat(lngLat)
-      .setHTML(buildPopupHTML(feature.properties, sourceKey))
-      .addTo(map);
+    const html = buildPopupHTML(feature.properties, sourceKey);
+    const surface = isMobile()
+      ? openFeatureSheet(html)
+      : new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: '290px' })
+          .setLngLat(lngLat).setHTML(html).addTo(map);
     let sortMode = 'alpha';   // survives grade-pill rebuilds
 
     // The popup body re-renders when a grade pill changes the shared filter
     // state, so all wiring lives in a re-runnable function.
     function wire() {
-      const el = popup.getElement();
+      const el = surface.getElement();
       const dirBtn = el.querySelector('.popup-directions-btn');
       if (dirBtn) dirBtn.addEventListener('click', () => {
         const dest = featureCentroid(feature.geometry)
@@ -3145,14 +3556,14 @@
       const areaBtn = el.querySelector('.popup-area-climbs-btn, .popup-area-link');
       if (areaBtn) areaBtn.addEventListener('click', () => {
         const key = areaBtn.getAttribute('data-area-key');
-        popup.remove();
+        surface.remove();
         if (key) selectClimbArea(key);
       });
       // Climb list rows (area popups) + prev/next steppers (climb popups)
       el.querySelectorAll('.pcl-row, .pcl-step').forEach(btn => {
         btn.addEventListener('click', () => {
           const { fsrc, fid } = btn.dataset;
-          popup.remove();
+          surface.remove();
           flyToClimb(fsrc, fid);
         });
       });
@@ -3196,13 +3607,13 @@
           const buckets = family === 'boulders' ? V_BUCKETS : R_BUCKETS;
           const setter = family === 'boulders' ? sliderSetters.v : sliderSetters.r;
           if (buckets[want] && setter) setter(...buckets[want]);
-          popup.setHTML(buildPopupHTML(feature.properties, sourceKey));
+          surface.setHTML(buildPopupHTML(feature.properties, sourceKey));
           wire();
         });
       });
     }
     wire();
-    return popup;
+    return surface;
   }
 
   // ── Area ↔ climb popup navigation ─────────────────────────────
@@ -3245,7 +3656,9 @@
     return out.sort(byClimbName);
   }
 
-  function flyToClimb(src, fid) {
+  // Center a feature and open its popup — used by climbing nav, the experience
+  // bar search, and the feature list. Source-agnostic (looks up by id in cache).
+  function flyToFeature(src, fid) {
     const f = (layerCache[src] || { features: [] }).features
       .find(x => String(x.properties.id) === String(fid));
     if (!f) return;
@@ -3254,6 +3667,7 @@
     map.flyTo({ center: coords, zoom: Math.max(map.getZoom(), 16), speed: 1.4 });
     openFeaturePopup(f, src, coords);
   }
+  const flyToClimb = flyToFeature;  // back-compat alias for existing climbing callers
 
   // Direct climb counts per area, baked into the cached area features so
   // every setData path (initial load, style switch, filters) carries them.
@@ -3469,7 +3883,7 @@
       }
     }
     // Campground hulls — companion to campsite_sites (migration 027). Spurs are
-    // now ordinary roads (migrations 028/029) and load with the roads layer.
+    // now ordinary roads (migrations 028/033) and load with the roads layer.
     if (layerMeta['campsite_sites']) {
       for (const src of ['campground_hulls']) {
         if (!layerCache[src]) {
@@ -3499,6 +3913,7 @@
     initClimbingFilters(layers);
     initCampFilter(layers);
     initFeatureFilters(layers);
+    initExperienceBar();
 
     document.getElementById('feature-count-badge').innerHTML =
       `<i class="fa-solid fa-layer-group"></i> ${total.toLocaleString()} Features`;

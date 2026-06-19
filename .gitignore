@@ -10,3 +10,10 @@ verify_map.png
 
 # Raw OSM extracts — large; regenerate with fetch_osm.py
 osm_data_files/
+
+# Copyright-sensitive source imagery: the WI DNR campground map and the crops
+# derived from it. Used locally only to extract facts (the source map is not
+# ours to redistribute); the extracted facts live in the database, not here.
+# Never commit or publish these.
+Campsite Maps/
+campsite_maps/
