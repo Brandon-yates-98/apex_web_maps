@@ -1365,6 +1365,15 @@
     canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
+    // Bake a vendored SVG path (15x15 source viewBox) centered + scaled into
+    // the 64px glyph canvas; (cx,cy) is the source-unit point to center on the
+    // disc. Sources + licenses: Icons/README.md and Icons/vendor/.
+    const svgGlyph = (d, cx, cy, s) => {
+      ctx.save();
+      ctx.translate(32, 32); ctx.scale(s, s); ctx.translate(-cx, -cy);
+      ctx.fill(new Path2D(d));
+      ctx.restore();
+    };
     if (name === 'dl-carabiner') {
       // tilted pear-shaped ring (small nose circle + big basket circle joined
       // by their outer tangents) with a slit erased across the upper-right
@@ -1411,56 +1420,20 @@
       ctx.moveTo(22, 40); ctx.lineTo(44, 38);
       ctx.stroke();
     } else if (name === 'dl-tent') {
-      // A-frame tent: solid triangle with a triangular door cut out
-      ctx.beginPath();
-      ctx.moveTo(32, 16); ctx.lineTo(52, 50); ctx.lineTo(12, 50); ctx.closePath();
-      ctx.fill();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.moveTo(32, 30); ctx.lineTo(40, 50); ctx.lineTo(24, 50); ctx.closePath();
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+      // campsite tent — Maki `campsite` (CC0). Icons/vendor/maki/campsite.svg
+      svgGlyph('M14 10V11C14 11.5523 13.5523 12 13 12H2C1.44772 12 1 11.5523 1 11V10C1 9.44772 1.44772 9.00001 2 9.00001H2.25L7.03206 1.25762C7.24699 0.90965 7.75302 0.909651 7.96794 1.25762L12.75 9.00001H13C13.5523 9.00001 14 9.44772 14 10ZM10.5 9.00001L7.5 4.00001L4.5 9.00001H10.5Z', 7.5, 6.5, 2.7);
     } else if (name === 'dl-rv') {
-      // camper van: tall box + lower cab to the right, windows + two wheels
-      ctx.beginPath();
-      ctx.moveTo(12, 22); ctx.lineTo(38, 22); ctx.lineTo(38, 32);
-      ctx.lineTo(52, 32); ctx.lineTo(52, 44); ctx.lineTo(12, 44);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillRect(41, 34, 9, 7);   // cab windshield
-      ctx.fillRect(16, 26, 9, 7);   // side window
-      ctx.beginPath();               // wheel wells
-      ctx.arc(22, 44, 6, 0, Math.PI * 2); ctx.arc(44, 44, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.beginPath();               // tires
-      ctx.arc(22, 45, 3.4, 0, Math.PI * 2); ctx.arc(44, 45, 3.4, 0, Math.PI * 2);
-      ctx.fill();
+      // camper trailer — Temaki `camper_trailer` (CC0). Icons/vendor/temaki/camper_trailer.svg
+      svgGlyph('M10.5 11C10.5 9.9 9.6 9 8.5 9C7.4 9 6.5 9.9 6.5 11L0.5 11C0.22 11 0 10.78 0 10.5C0 10.22 0.22 10 0.5 10L3 10C1.9 10 1 9.1 1 8L1 5.29C1 4.26 1.78 3.4 2.8 3.3L2.8 3.3C4.73 3.1 6.46 3 8 3C9.54 3 11.27 3.1 13.2 3.3C14.22 3.4 15 4.26 15 5.29L15 9C15 10.1 14.1 11 13 11L10.5 11ZM5.5 7C5.78 7 6 6.78 6 6.5L6 5.5C6 5.22 5.78 5 5.5 5L3.5 5C3.22 5 3 5.22 3 5.5L3 6.5C3 6.78 3.22 7 3.5 7L5.5 7ZM12.5 7C12.78 7 13 6.78 13 6.5L13 5.5C13 5.22 12.78 5 12.5 5L8.5 5C8.22 5 8 5.22 8 5.5L8 6.5C8 6.78 8.22 7 8.5 7L12.5 7ZM8.5 12.5C7.67 12.5 7 11.83 7 11C7 10.17 7.67 9.5 8.5 9.5C9.33 9.5 10 10.17 10 11C10 11.83 9.33 12.5 8.5 12.5Z', 7.5, 7.75, 2.4);
     } else if (name === 'dl-parking') {
-      // bold "P" — the universal parking pictogram
-      ctx.font = 'bold 46px Arial, Helvetica, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('P', 32, 35);
+      // parking "P" — Maki `parking` (CC0). Icons/vendor/maki/parking.svg
+      svgGlyph('M4 2V13H6V9H8.5C10.433 9 12 7.433 12 5.5C12 3.567 10.433 2 8.5 2H4ZM6 7V4H8.5C9.32843 4 10 4.67157 10 5.5C10 6.32843 9.32843 7 8.5 7H6Z', 8, 7.5, 3.2);
     } else if (name === 'dl-restroom') {
-      // restroom sign: a man + woman figure split by a thin divider
-      ctx.beginPath(); ctx.arc(23, 15, 5, 0, Math.PI * 2); ctx.fill(); // man head
-      ctx.fillRect(19.5, 22, 7, 13);                                   // man torso
-      ctx.fillRect(20, 35, 2.6, 11); ctx.fillRect(23.8, 35, 2.6, 11);  // man legs
-      ctx.beginPath(); ctx.arc(43, 15, 5, 0, Math.PI * 2); ctx.fill(); // woman head
-      ctx.beginPath();                                                 // woman dress
-      ctx.moveTo(43, 21); ctx.lineTo(35.5, 39); ctx.lineTo(50.5, 39); ctx.closePath(); ctx.fill();
-      ctx.fillRect(40, 39, 2.6, 7); ctx.fillRect(43.8, 39, 2.6, 7);    // woman legs
-      ctx.fillRect(32.4, 11, 1.3, 35);                                 // divider
+      // restroom — Maki `toilet` (CC0). Icons/vendor/maki/toilet.svg
+      svgGlyph('M3 1.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0ZM11.5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM3.29 4a1 1 0 0 0-.868.504L.566 7.752a.5.5 0 1 0 .868.496l1.412-2.472A345.048 345.048 0 0 0 1 11h2v2.5a.5.5 0 0 0 1 0V11h1v2.5a.5.5 0 0 0 1 0V11h2L6.103 5.687l1.463 2.561a.5.5 0 1 0 .868-.496L6.578 4.504A1 1 0 0 0 5.71 4H3.29ZM9 4.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0v4a.5.5 0 0 1-1 0v-4h-1v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 1-1 0v-5Z', 7.28, 6.75, 2.6);
     } else if (name === 'dl-water') {
-      // teardrop — drinking water; solid shape survives atlas minification
-      ctx.beginPath();
-      ctx.moveTo(32, 12);                          // top point
-      ctx.bezierCurveTo(46, 30, 46, 44, 32, 50);   // down the right side
-      ctx.bezierCurveTo(18, 44, 18, 30, 32, 12);   // back up the left side
-      ctx.closePath();
-      ctx.fill();
+      // drinking water — Maki `drinking-water` (CC0). Icons/vendor/maki/drinking-water.svg
+      svgGlyph('M6,1A2,2,0,0,0,4,3V6.5a.5.5,0,0,0,.5.5h2A.5.5,0,0,0,7,6.5v-2A.5.5,0,0,1,7.5,4H14V1ZM7,15H4a.5.5,0,0,1-.48-.38L2,8.62a.5.5,0,0,1,.365-.606A.558.558,0,0,1,2.5,8h6a.5.5,0,0,1,.514.485A.47.47,0,0,1,9,8.62l-1.5,6A.5.5,0,0,1,7,15ZM3.65,11H7.36l.5-2H3.14Z', 8, 8, 2.5);
     } else if (!tint) {
       ctx.beginPath();
       ctx.arc(S / 2, S / 2, S / 2 - 5, 0, Math.PI * 2);
@@ -1698,7 +1671,7 @@
           layout: {
             'icon-image': baked ? iconImage + '@' + color : iconImage,
             'icon-size': baked
-              ? ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8] // a bit larger than campsite markers
+              ? ['interpolate', ['linear'], ['zoom'], 13, 0.65, 19, 1.05] // a bit larger than campsite markers
               : selfBadge
               ? ['interpolate', ['linear'], ['zoom'], 10, 0.93 * iconScale, 14, 1.47 * iconScale]
               : ['interpolate', ['linear'], ['zoom'], 10, 0.65, 14, 0.98],
@@ -1712,6 +1685,9 @@
             'text-color': selfBadge ? '#fff' : '#333',
             'text-halo-color': selfBadge ? '#000' : '#fff',
             'text-halo-width': selfBadge ? 0.8 : 1.5 } };
+        // Baked amenity glyphs (parking/restroom/water) are campground detail —
+        // reveal them with the campsite sites (z13.5+), not at every zoom.
+        if (baked) iconSpec.minzoom = 13.5;
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
         mapboxIds.push(key+'-icon');
@@ -1784,26 +1760,21 @@
         map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 14,
           layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-max-width': 8 },
           paint: { 'text-color': '#fff', 'text-halo-color': '#1b3a1b', 'text-halo-width': 1.4 } });
-        // Spur "driveways" — thin connector from each site to the nearest road (migration 028).
-        // Warm-tan path over a soft cream casing so it reads as an unpaved drive on either basemap;
-        // appears with the site icons (z13.5+), sits below them (firstSymbol).
-        const SP = 'campsite_spurs';
-        if (!map.getSource(SP)) map.addSource(SP, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({ id: SP+'-casing', type: 'line', source: SP, minzoom: 13.5,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#f2ead7', 'line-width': ['interpolate', ['linear'], ['zoom'], 13.5, 1.8, 17, 3.6], 'line-opacity': 0.4 } }, firstSymbol);
-        map.addLayer({ id: SP+'-line', type: 'line', source: SP, minzoom: 13.5,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#a9805a', 'line-width': ['interpolate', ['linear'], ['zoom'], 13.5, 0.7, 17, 1.7], 'line-opacity': 0.92 } }, firstSymbol);
+        // Spur "driveways" (site → nearest road) are now ordinary roads
+        // (source='roads', highway='service'; migrations 028/029) — they render
+        // and toggle with the roads layer, no longer a campsite companion.
         // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
         const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 13.5,
           layout: { 'icon-image': ICON,
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.42, 16, 0.62],
+            // Icons appear at z13.5 (the campground hull owns lower zoom); from
+            // there they grow steadily as you zoom in, ~0.56 at appearance up to
+            // 1.0 at z19 (the stop is extended past z16 so they keep growing).
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 13.5, 0.56, 19, 1.0],
             'icon-allow-overlap': true, 'icon-ignore-placement': true } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
-        mapboxIds.push(key+'-icon', CG+'-fill', CG+'-line', CG+'-label', SP+'-casing', SP+'-line');
+        mapboxIds.push(key+'-icon', CG+'-fill', CG+'-line', CG+'-label');
       } else {
         const spec = { id: key+'-circle', type: 'circle', source: key,
           paint: { 'circle-color': color, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
@@ -1833,11 +1804,14 @@
         if (dsIcon) {
           const baked = dsIcon.indexOf('dl-') === 0;
           const iconF = filter ? ['all', ['!=', '$type', 'LineString'], filter] : ['!=', '$type', 'LineString'];
+          // Baked amenity glyph (parking) is campground detail — reveal it with
+          // the campsite sites (z13.5+), not at every zoom.
           map.addLayer({ id: key+'-icon', type: 'symbol', source: key, filter: iconF,
+            ...(baked ? { minzoom: 13.5 } : {}),
             layout: {
               'icon-image': baked ? dsIcon + '@' + color : dsIcon,
               // a bit larger than the campsite markers
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 0.8],
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.65, 19, 1.05],
               'icon-allow-overlap': true, 'icon-ignore-placement': true },
             paint: { 'icon-color': '#ffffff' } });
           mapboxIds.push(key+'-line', key+'-icon');
@@ -2139,7 +2113,7 @@
     });
     Object.keys(layerToSource).forEach(lid => {
       if (lid.endsWith('-glow') || lid.endsWith('-case')) return;
-      if (lid.startsWith('campground_hulls-') || lid.startsWith('campsite_spurs-')) return;  // derived geometry — not selectable/editable
+      if (lid.startsWith('campground_hulls-')) return;  // derived geometry — not selectable/editable
       map.on('mouseenter', lid, () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', lid, () => { map.getCanvas().style.cursor = ''; });
       if (!lid.endsWith('-outline')) {
@@ -2204,10 +2178,11 @@
       const hullSrc = map.getSource('climbing_area_hulls');
       if (hullSrc && layerCache['climbing_area_hulls']) hullSrc.setData(layerCache['climbing_area_hulls']);
     }
-    // Campground footprint hulls + campsite spurs — companions to campsite_sites
-    // (migrations 027/028), not experience layers, loaded alongside the points.
+    // Campground footprint hulls — companion to campsite_sites (migration 027),
+    // not an experience layer, loaded alongside the points. (Spurs are now
+    // ordinary roads — migrations 028/029 — and load with the roads layer.)
     if (layers.some(l => (l.source_key || l.template_slug) === 'campsite_sites')) {
-      for (const src of ['campground_hulls', 'campsite_spurs']) {
+      for (const src of ['campground_hulls']) {
         if (!layerCache[src]) {
           const { data } = await db.rpc('get_layer_geojson', { p_source: src });
           if (data) layerCache[src] = data;
@@ -2230,9 +2205,10 @@
       id: el.id,   // experience_layers row id — used by the default-visibility pin
       source_key: el.template_slug,
       template_slug: el.template_slug,
-      label: el.layer_templates.label,
+      // Per-experience overrides (migration 031) win over the global template.
+      label: el.label_override || el.layer_templates.label,
       geom_type: el.layer_templates.geom_type,
-      layer_group: el.layer_templates.layer_group,
+      layer_group: el.layer_group_override || el.layer_templates.layer_group,
       default_style: el.layer_templates.default_style,
       field_schema: el.layer_templates.field_schema || [],
       popup_template: el.layer_templates.popup_template || null,
@@ -3638,9 +3614,10 @@
     const normalized = currentExpLayers.map(el => ({
       source_key: el.template_slug,
       template_slug: el.template_slug,
-      label: el.layer_templates.label,
+      // Per-experience overrides (migration 031) win over the global template.
+      label: el.label_override || el.layer_templates.label,
       geom_type: el.layer_templates.geom_type,
-      layer_group: el.layer_templates.layer_group,
+      layer_group: el.layer_group_override || el.layer_templates.layer_group,
       default_style: el.layer_templates.default_style,
       field_schema: el.layer_templates.field_schema || [],
       popup_template: el.layer_templates.popup_template || null,
@@ -3657,7 +3634,7 @@
       if (src && layerCache[key]) src.setData(layerCache[key]);
     });
     // Companion sources aren't experience layers — re-feed their caches too.
-    ['campground_hulls', 'campsite_spurs'].forEach(src => {
+    ['campground_hulls'].forEach(src => {
       const s = map.getSource(src);
       if (s && layerCache[src]) s.setData(layerCache[src]);
     });
