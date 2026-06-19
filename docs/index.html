@@ -212,7 +212,6 @@
     }
     .layer-group.collapsed .ps-caret { transform: rotate(-90deg); }
     .layer-group.collapsed .layer-row,
-    .layer-group.collapsed .camp-group-footer,
     .layer-group.collapsed .poi-filters { display: none; }
 
     .layer-row {
@@ -423,10 +422,8 @@
     #climb-filter-chip:hover { border-color: rgba(231,76,60,0.6); }
     #climb-filter-chip:hover .cfc-x { color: #e74c3c; }
 
-    /* ── Camping group filter footer (presets + price, under the layer rows) ── */
-    .camp-group-footer { padding: 4px 6px 10px 14px; margin-top: 2px; border-top: 1px solid rgba(255,255,255,0.05); }
-    .camp-footer-label { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin: 4px 0 7px; }
-    .camp-group-footer .ff-presets { margin-top: 2px; }
+    /* ── Campsite filters (own section at the top of the sidebar) ── */
+    .camp-filters .ff-presets { margin-top: 2px; }
     .camp-price-filter { display: none; }
     .camp-price-filter.visible { display: block; }
     .df-row { margin-bottom: 12px; }
@@ -900,6 +897,13 @@
       <select id="experience-select" class="cf-select"></select>
     </div>
 
+    <!-- Campsite filters — their own section at the top of the sidebar, above
+         Layers. Body populated by buildLayersFromConfig when campsites exist. -->
+    <div class="panel-section" id="camp-filter-section" style="display:none">
+      <div class="panel-section-title">Campground Filters</div>
+      <div id="camp-filter-body"></div>
+    </div>
+
     <div class="panel-section" id="layers-section">
       <div class="panel-section-title">Layers<button id="toggle-all-layers" class="layer-toggle-all" title="Show / hide all layers"><i class="fa-solid fa-eye"></i> All</button></div>
       <div id="layer-list"><!-- populated by buildLayersFromConfig --></div>
@@ -950,8 +954,8 @@
     </div>
 
     <!-- Custom (ad-hoc) filter builder. The predefined saved-filter presets
-         (#ff-presets) render in the Camping group footer, built in
-         buildLayersFromConfig / appendCampingFilters. -->
+         (#ff-presets) render in the Campground Filters section at the top of
+         the sidebar, built in buildLayersFromConfig / buildCampingFilters. -->
     <div id="feature-filter-panel" class="panel-section collapsible">
       <div class="panel-section-title">Custom Filter<i class="fa-solid fa-chevron-down ps-caret"></i></div>
 
@@ -2585,24 +2589,24 @@
         // fetched alongside this layer and tied to its visibility (pushed to mapboxIds).
         const CG = 'campground_hulls';
         if (!map.getSource(CG)) map.addSource(CG, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 14,
-          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.18, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 14,
-          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 14,
+        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 15,
+          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.18, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 15,
+          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.9, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 15,
           layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-max-width': 8 },
           paint: { 'text-color': '#fff', 'text-halo-color': '#1b3a1b', 'text-halo-width': 1.4 } });
         // Spur "driveways" (site → nearest road) are now ordinary roads
-        // (source='roads', highway='service'; migrations 028/029) — they render
+        // (source='roads', highway='service'; migrations 028/033) — they render
         // and toggle with the roads layer, no longer a campsite companion.
         // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
         const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
-        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 13.5,
+        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
           layout: { 'icon-image': ICON,
-            // Icons appear at z13.5 (the campground hull owns lower zoom); from
-            // there they grow steadily as you zoom in, ~0.56 at appearance up to
-            // 1.0 at z19 (the stop is extended past z16 so they keep growing).
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 13.5, 0.56, 19, 1.0],
+            // Icons appear at z14.5 (the campground hull owns lower zoom and fades
+            // out by z15); from there they grow as you zoom in, ~0.56 at appearance
+            // up to 1.0 at z19 (the stop is extended past z16 so they keep growing).
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.56, 19, 1.0],
             'icon-allow-overlap': true, 'icon-ignore-placement': true } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
@@ -2742,8 +2746,9 @@
     activePresetIds.clear();
     adhocFilter = null;
 
-    // Predefined saved-filter presets — rendered into the Camping group footer
-    // (#ff-presets, built by appendCampingFilters), independent of the custom
+    // Predefined saved-filter presets — rendered into the Campground Filters
+    // section at the top of the sidebar (#ff-presets, built by
+    // buildCampingFilters), independent of the custom
     // panel below. Populated here because this runs after buildLayersFromConfig.
     const presetWrap = document.getElementById('ff-presets');
     if (presetWrap) {
@@ -2921,21 +2926,31 @@
       header.addEventListener('click', () => groupEl.classList.toggle('collapsed'));
       groupEl.appendChild(header);
       groupLayers.forEach(layerCfg => renderLayerRow(layerCfg, groupEl));
-      // The Camping group carries its filters at the bottom, under its rows:
-      // the predefined (saved) filter presets + the max-nightly-price slider.
-      if (groupLayers.some(l => l.source_key === CAMPING_SOURCE)) appendCampingFilters(groupEl);
       listEl.appendChild(groupEl);
     });
 
-    // Camping group footer: predefined filter presets (populated later by
-    // initFeatureFilters into #ff-presets) + the max-nightly-price slider
-    // (configured by initCampFilter). Rebuilt with the list, so #ff-presets is
+    // Campsite filters live in their own section at the TOP of the sidebar
+    // (#camp-filter-section, outside the Layers list), shown only when the
+    // campsites layer is present. Rebuilt with the list so #ff-presets is
     // recreated fresh each time and the init passes that run afterward find it.
-    function appendCampingFilters(groupEl) {
-      const footer = document.createElement('div');
-      footer.className = 'camp-group-footer';
-      footer.innerHTML = `
-        <div class="camp-footer-label">Campground Filters</div>
+    const campSection = document.getElementById('camp-filter-section');
+    const campBody = document.getElementById('camp-filter-body');
+    if (campSection && campBody) {
+      campBody.innerHTML = '';
+      if (layers.some(l => l.source_key === CAMPING_SOURCE)) {
+        campBody.appendChild(buildCampingFilters());
+        campSection.style.display = '';
+      } else {
+        campSection.style.display = 'none';
+      }
+    }
+
+    // The max-price slider + the predefined filter presets (populated later by
+    // initFeatureFilters into #ff-presets; configured by initCampFilter).
+    function buildCampingFilters() {
+      const box = document.createElement('div');
+      box.className = 'camp-filters';
+      box.innerHTML = `
         <div class="camp-price-filter">
           <div class="df-row">
             <div class="df-label"><span><i class="fa-solid fa-dollar-sign"></i> Max Price (per night)</span><span id="df-price-val" class="df-val">Any</span></div>
@@ -2945,7 +2960,7 @@
           <button id="df-reset" class="cf-reset-btn" style="display:none">Reset</button>
         </div>
         <div id="ff-presets" class="ff-presets"></div>`;
-      groupEl.appendChild(footer);
+      return box;
     }
 
     // Build one sidebar row (or the climbing-areas split) into `container`.
@@ -3469,7 +3484,7 @@
       }
     }
     // Campground hulls — companion to campsite_sites (migration 027). Spurs are
-    // now ordinary roads (migrations 028/029) and load with the roads layer.
+    // now ordinary roads (migrations 028/033) and load with the roads layer.
     if (layerMeta['campsite_sites']) {
       for (const src of ['campground_hulls']) {
         if (!layerCache[src]) {

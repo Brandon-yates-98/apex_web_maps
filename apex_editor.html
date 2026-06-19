@@ -1753,24 +1753,24 @@
         // fetched alongside this layer and tied to its visibility (pushed to mapboxIds).
         const CG = 'campground_hulls';
         if (!map.getSource(CG)) map.addSource(CG, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 14,
-          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.18, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 14,
-          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 14, 0] } }, firstSymbol);
-        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 14,
+        map.addLayer({ id: CG+'-fill', type: 'fill', source: CG, maxzoom: 15,
+          paint: { 'fill-color': '#27ae60', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.18, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-line', type: 'line', source: CG, maxzoom: 15,
+          paint: { 'line-color': '#1f8a4c', 'line-width': 1.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.9, 15, 0] } }, firstSymbol);
+        map.addLayer({ id: CG+'-label', type: 'symbol', source: CG, maxzoom: 15,
           layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-max-width': 8 },
           paint: { 'text-color': '#fff', 'text-halo-color': '#1b3a1b', 'text-halo-width': 1.4 } });
         // Spur "driveways" (site → nearest road) are now ordinary roads
-        // (source='roads', highway='service'; migrations 028/029) — they render
+        // (source='roads', highway='service'; migrations 028/033) — they render
         // and toggle with the roads layer, no longer a campsite companion.
         // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
         const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
-        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 13.5,
+        const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
           layout: { 'icon-image': ICON,
-            // Icons appear at z13.5 (the campground hull owns lower zoom); from
-            // there they grow steadily as you zoom in, ~0.56 at appearance up to
-            // 1.0 at z19 (the stop is extended past z16 so they keep growing).
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 13.5, 0.56, 19, 1.0],
+            // Icons appear at z14.5 (the campground hull owns lower zoom and fades
+            // out by z15); from there they grow as you zoom in, ~0.56 at appearance
+            // up to 1.0 at z19 (the stop is extended past z16 so they keep growing).
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.56, 19, 1.0],
             'icon-allow-overlap': true, 'icon-ignore-placement': true } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
@@ -1843,7 +1843,7 @@
     const id = key + '-sitelabel';
     if (map.getLayer(id)) return;
     const labelSpec = {
-      id, type: 'symbol', source: key, minzoom: 13.5,  // appear with the site icons, not over the hull
+      id, type: 'symbol', source: key, minzoom: 14.5,  // appear with the site icons, not over the hull
       layout: {
         'text-field': ['coalesce', ['get', 'ref'], ''],
         'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
@@ -2180,7 +2180,7 @@
     }
     // Campground footprint hulls — companion to campsite_sites (migration 027),
     // not an experience layer, loaded alongside the points. (Spurs are now
-    // ordinary roads — migrations 028/029 — and load with the roads layer.)
+    // ordinary roads — migrations 028/033 — and load with the roads layer.)
     if (layers.some(l => (l.source_key || l.template_slug) === 'campsite_sites')) {
       for (const src of ['campground_hulls']) {
         if (!layerCache[src]) {
