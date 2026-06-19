@@ -1100,7 +1100,7 @@
         <label class="gtc-field"><span>Arrival</span><input type="date" id="gtc-start" /></label>
         <label class="gtc-field gtc-field-nights"><span>Nights</span><input type="number" id="gtc-nights" min="1" max="30" step="1" value="1" /></label>
       </div>
-      <label class="gtc-field"><span>Equipment</span><select id="gtc-equip"></select></label>
+      <label class="gtc-field"><span id="gtc-type-label">Equipment</span><select id="gtc-equip"></select></label>
       <button id="gtc-go"><i class="fa-solid fa-arrow-up-right-from-square"></i> Search availability</button>
       <div id="gtc-note">Opens the official Wisconsin State Parks reservation site in a new tab.</div>
     </div>
@@ -1670,39 +1670,75 @@
     });
     return `https://wisconsin.goingtocamp.com/create-booking/results?${p}`;
   }
-  // Date-picker modal: collect arrival + nights, then open the deep link.
-  let _gtcWired = false;
-  function openGtcModal(ids, featureName) {
+  // ── Campspot reservation deep links ─────────────────────────────────
+  // The campground is a slug in the path; the site type is the campsiteCategory
+  // query param. Categories per campground harvested from campspot.com.
+  const CAMPSPOT_CATEGORIES = {
+    'green-valley-campground': ['Tent Sites', 'RV Sites'],
+    'skillet-creek-campground': ['Tent Sites', 'RV Sites', 'Lodging'],
+    'lakewisconsincampground': ['Tent Sites', 'RV Sites'],
+    'smokeyhollow': ['Tent Sites', 'RV Sites', 'Lodging'],
+    'foxhillrvpark': ['RV Sites', 'Tent Sites'],
+  };
+  function parseCampspot(url) {
+    if (!url) return null;
+    const m = url.match(/campspot\.com\/book\/([^/?#]+)/i);
+    return m ? { slug: m[1] } : null;
+  }
+  function campspotUrl({ slug }, { startDate, nights = 1, category } = {}) {
+    const today = new Date();
+    const start = startDate ? new Date(startDate + 'T00:00:00')
+      : (() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d; })();
+    const n = Math.max(1, Math.min(30, Math.round(nights) || 1));
+    const end = new Date(start); end.setDate(end.getDate() + n);
+    let u = `https://www.campspot.com/book/${slug}/search/${GTC_DATE(start)}/${GTC_DATE(end)}/guests0,1,0/list`;
+    if (category) u += `?campsiteCategory=${encodeURIComponent(category)}`;
+    return u;
+  }
+
+  // Date-picker modal: collect arrival + nights (+ rig / site type), then open
+  // the provider's deep link. Shared by GoingToCamp and Campspot.
+  let _reserveWired = false;
+  function openReserveModal(provider, cfg, featureName) {
     const modal = document.getElementById('gtc-modal');
     const startInput = document.getElementById('gtc-start');
     const nightsInput = document.getElementById('gtc-nights');
-    const equipSel = document.getElementById('gtc-equip');
-    if (!equipSel.options.length) {
-      equipSel.innerHTML = GTC_EQUIPMENT.map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+    const typeSel = document.getElementById('gtc-equip');
+    const typeLabel = document.getElementById('gtc-type-label');
+    const note = document.getElementById('gtc-note');
+    if (provider === 'campspot') {
+      typeLabel.textContent = 'Site type';
+      typeSel.innerHTML = '<option value="">All site types</option>'
+        + (cfg.categories || []).map(c => `<option value="${c}">${c}</option>`).join('');
+      note.textContent = "Opens the campground's Campspot booking page in a new tab.";
+    } else {
+      typeLabel.textContent = 'Equipment';
+      typeSel.innerHTML = GTC_EQUIPMENT.map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+      note.textContent = 'Opens the official Wisconsin State Parks reservation site in a new tab.';
     }
     const today = new Date();
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     startInput.min = GTC_DATE(today);
     startInput.value = GTC_DATE(tomorrow);
     nightsInput.value = 1;
-    document.getElementById('gtc-feature-name').textContent = featureName || 'Wisconsin State Park';
+    document.getElementById('gtc-feature-name').textContent = featureName || '';
     modal.classList.add('open');
-    if (!_gtcWired) {
-      _gtcWired = true;
+    if (!_reserveWired) {
+      _reserveWired = true;
       const close = () => modal.classList.remove('open');
       document.getElementById('gtc-close').addEventListener('click', close);
       modal.addEventListener('click', e => { if (e.target === modal) close(); });
       document.getElementById('gtc-go').addEventListener('click', () => {
-        const url = goingToCampUrl(openGtcModal._ids, {
-          startDate: startInput.value || undefined,
-          nights: +nightsInput.value || 1,
-          subEquipmentId: +equipSel.value || -32768,
-        });
+        const { provider, cfg } = openReserveModal._ctx;
+        const opts = { startDate: startInput.value || undefined, nights: +nightsInput.value || 1 };
+        const url = provider === 'campspot'
+          ? campspotUrl(cfg, { ...opts, category: typeSel.value || '' })
+          : goingToCampUrl(cfg.ids, { ...opts, subEquipmentId: +typeSel.value || -32768 });
         window.open(url, '_blank', 'noopener');
         close();
       });
     }
-    openGtcModal._ids = ids;
+    openReserveModal._ctx = { provider, cfg };
   }
 
   // ── Climbing grade helpers ────────────────────────────────────
@@ -3807,14 +3843,23 @@
           || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]);
         openDirections(dest);
       });
-      // GoingToCamp reserve links: if the URL carries location IDs, intercept
-      // the click to collect dates and deep-link to the live availability page.
+      // Reserve links: intercept supported providers to collect dates (+ rig /
+      // site type) and deep-link to the live availability page.
+      const featName = feature.properties && feature.properties.name;
       const gtcLink = el.querySelector('a[href*="goingtocamp.com"]');
       if (gtcLink) {
         const gtcIds = parseGoingToCamp(gtcLink.getAttribute('href'));
         if (gtcIds) gtcLink.addEventListener('click', (ev) => {
           ev.preventDefault();
-          openGtcModal(gtcIds, feature.properties && feature.properties.name);
+          openReserveModal('goingtocamp', { ids: gtcIds }, featName);
+        });
+      }
+      const csLink = el.querySelector('a[href*="campspot.com/book/"]');
+      if (csLink) {
+        const cs = parseCampspot(csLink.getAttribute('href'));
+        if (cs) csLink.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          openReserveModal('campspot', { slug: cs.slug, categories: CAMPSPOT_CATEGORIES[cs.slug] || [] }, featName);
         });
       }
       // OpenBeta area association: jump to an area's climbs (from an area
