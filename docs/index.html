@@ -914,6 +914,12 @@
     /* Keep the title clear of the absolute close button (44px) in the sheet. */
     #feature-sheet .popup-header,
     #feature-sheet .cp-head { padding-right: 52px; }
+    /* Campground popup: drive times stacked, beside the price (mobile sheet). */
+    #feature-sheet .cp-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    #feature-sheet .cp-pricecol { min-width: 0; }
+    #feature-sheet .cp-drivecol { flex: 0 0 auto; text-align: right; }
+    #feature-sheet .cp-drivecol .cp-meta { justify-content: flex-end; margin-top: 0; }
+    #feature-sheet .cp-drivecol .cp-meta + .cp-meta { margin-top: 5px; }
 
     /* ─── Experience top bar (primary functionality over the map) ─── */
     #exp-bar {
@@ -1597,11 +1603,19 @@
       const arr = Array.isArray(ctx[key]) ? ctx[key] : [];
       return arr.map(item => inner.replace(/\{\{\s*this\s*\}\}/g, escapeHtml(item))).join('');
     });
-    out = out.replace(/\{\{\s*#if\s+(\w+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g, (m, key, inner) => {
-      const v = ctx[key];
-      const has = v != null && !(Array.isArray(v) ? v.length === 0 : String(v).trim() === '');
-      return has ? inner : '';
-    });
+    // #if — supports nesting: a block's content may not contain another {{#if}},
+    // so the regex matches innermost blocks first; loop until stable to unwind
+    // outer blocks too.
+    const ifRe = /\{\{\s*#if\s+(\w+)\s*\}\}((?:(?!\{\{\s*#if\s)[\s\S])*?)\{\{\s*\/if\s*\}\}/g;
+    let prevIf;
+    do {
+      prevIf = out;
+      out = out.replace(ifRe, (m, key, inner) => {
+        const v = ctx[key];
+        const has = v != null && !(Array.isArray(v) ? v.length === 0 : String(v).trim() === '');
+        return has ? inner : '';
+      });
+    } while (out !== prevIf);
     out = out.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, key) => {
       const v = ctx[key];
       if (v == null || Array.isArray(v)) return '';
