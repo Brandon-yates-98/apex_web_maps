@@ -1,6 +1,8 @@
 # Apex Web Maps
 
-Interactive trail, climbing, and adventure maps by [Apex Adventure Alliance](https://apexadventurealliance.com) — built as an installable, offline-capable web app (PWA). No app store, no native code: one HTML file, Mapbox GL JS, and Supabase.
+An installable, offline-capable web map for outdoor recreation around **Devil's Lake / Baraboo / Sauk County, Wisconsin** — trails, climbing, campsites, and points of interest. No app store, no native code: one HTML file, Mapbox GL JS, and Supabase.
+
+This is an **independent community project**. It supports and drives traffic to [Apex Adventure Alliance](https://apexadventurealliance.com), but it is not operated by them — ownership and liability stay separate (see [Independence](#independence)).
 
 **Live map:** https://brandon-yates-98.github.io/apex_web_maps/
 
@@ -9,17 +11,39 @@ Interactive trail, climbing, and adventure maps by [Apex Adventure Alliance](htt
 - 🧗 Climbing data (routes, boulders, areas) from OpenBeta; trails and POIs from OpenStreetMap
 - 🧭 Directions hand off to the device's native maps app
 
+## What this project is for
+
+1. **Be a genuinely useful, free resource** — a high-quality, offline-ready map of the Devil's Lake / Sauk County outdoors that anyone can use at the trailhead without a paywall or an account.
+2. **Support local businesses** — surface local outdoor businesses and send people their way, including driving traffic to Apex Adventure Alliance.
+3. **Collect community photos & local knowledge** — let the people who actually use these places contribute photos and on-the-ground detail back into the map.
+4. **Contribute back to open source** — upstream verifiable facts (campsite locations, trail details) to OpenStreetMap and OpenBeta so the wider commons improves, not just this map.
+
+### Noncommercial by design
+
+This project is **not for direct commercial use.** The only money that is meant to flow is:
+
+- **Donations to cover the project's running costs** (hosting, map tiles, data) — *not* wages or profit; and
+- **Donations to local outdoor nonprofits** in exchange for custom map experiences.
+
+No one is meant to earn a wage or sell access from operating this map.
+
+### Independence
+
+This is an independent project and is **not affiliated with, operated by, or the responsibility of** Apex Adventure Alliance, onX, or the Wisconsin DNR. It supports Apex Adventure Alliance and may use their domain for the standard public experiences, but AAA is deliberately kept out of the ownership and liability chain. The map uses only OpenStreetMap, OpenBeta, and original survey data — **no onX data**.
+
 ## License — please read before reusing
 
-This project is **source-available** under the [PolyForm Shield License 1.0.0](LICENSE.md).
+This project is **source-available and noncommercial** (not OSI "open source").
+
+The licensing is being moved to the **[PolyForm Noncommercial License 1.0.0](licensing/LICENSE.md)**, with the full per-layer scaffold in [`licensing/`](licensing/) (code, data/content, trademarks, disclaimer, attribution, and community-submission terms). **Those files are DRAFTS pending legal review** — until they are promoted (see [`licensing/README.md`](licensing/README.md)), the operative license remains the root [`LICENSE.md`](LICENSE.md).
 
 **Plain-English summary** (the license text governs):
 
-> ✅ You're a climbing or outdoors community somewhere else in the world? Use this freely — copy it, adapt it, build your own community's map from it. That's why it's published.
+> ✅ You run a climbing or outdoors community somewhere else? Use this freely for **noncommercial** purposes — copy it, adapt it, build your own community's map from it. That's why it's published.
 >
-> ❌ You may **not** use it to build or operate a map or guide product that competes with Apex Adventure Alliance's offering — in particular, another map of the **Devil's Lake / Baraboo, Wisconsin area**.
+> ❌ You may **not** use it for direct commercial purposes (selling access, operating it for profit or wages). Cost-recovery donations and donations to local outdoor nonprofits for custom experiences are the intended exceptions.
 
-If you're unsure whether your use qualifies, open an issue or get in touch — permission for non-competing uses is the default answer.
+If you're unsure whether your use qualifies, open an issue or get in touch — permission for genuine noncommercial uses is the default answer.
 
 ### Data attribution (your obligations, not ours to waive)
 
@@ -40,6 +64,7 @@ docs/                    ← the deployed site (GitHub Pages serves this folder)
   icons/                 ← app icons (regenerate with make_icons.py)
 apex_editor.html         ← admin editor (auth-gated; deliberately NOT deployed)
 migrations/              ← Supabase SQL migrations, in order
+licensing/               ← draft noncommercial license + per-layer terms (pending review)
 supabase_setup.sql       ← initial schema
 supabase_lockdown.sql    ← pre-deployment security hardening — run before going live
 fetch_*.py, import_*.py  ← data pipeline (OSM, OpenBeta, campsites)
@@ -53,4 +78,4 @@ compute_drive_times.py   ← one-time drive-time precompute (Mapbox Directions A
 3. Import data: `op run --env-file=.env.tpl -- python import_openbeta.py` (and the other importers). Imports need the `service_role` key; the web app uses only the `anon` key.
 4. Serve `docs/` over HTTPS (GitHub Pages: Settings → Pages → branch `main`, folder `/docs`).
 
-© Apex Adventure Alliance. Climbing is dangerous — this map is informational and is no substitute for guidebooks, local knowledge, or judgment.
+Independent community project — not operated by Apex Adventure Alliance. Climbing is dangerous — this map is informational and is no substitute for guidebooks, local knowledge, or judgment.
