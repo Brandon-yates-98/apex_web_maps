@@ -665,11 +665,12 @@
     .gtc-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
     .gtc-field-nights { flex: 0 0 88px; }
     .gtc-field span { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #888; }
-    .gtc-field input {
+    .gtc-field input, .gtc-field select {
       width: 100%; box-sizing: border-box; border: 1px solid #d8e0cd; border-radius: 7px;
       padding: 9px 10px; font-size: 13px; font-family: inherit; color: #1a2418; outline: none;
+      background: #fff;
     }
-    .gtc-field input:focus { border-color: #9bc23c; }
+    .gtc-field input:focus, .gtc-field select:focus { border-color: #9bc23c; }
     #gtc-go {
       width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
       padding: 11px; border: none; border-radius: 7px; cursor: pointer; font-family: inherit;
@@ -1099,6 +1100,7 @@
         <label class="gtc-field"><span>Arrival</span><input type="date" id="gtc-start" /></label>
         <label class="gtc-field gtc-field-nights"><span>Nights</span><input type="number" id="gtc-nights" min="1" max="30" step="1" value="1" /></label>
       </div>
+      <label class="gtc-field"><span>Equipment</span><select id="gtc-equip"></select></label>
       <button id="gtc-go"><i class="fa-solid fa-arrow-up-right-from-square"></i> Search availability</button>
       <div id="gtc-note">Opens the official Wisconsin State Parks reservation site in a new tab.</div>
     </div>
@@ -1634,21 +1636,35 @@
     if (!txId || !mapId) return null;   // need location identity to deep-link
     return { txId, resId: q.get('resourceLocationId') || txId, mapId };
   }
-  function goingToCampUrl({ txId, resId, mapId }, { startDate, nights = 1 } = {}) {
+  // Wisconsin's equipment category is a single group (id -32768); the rig is the
+  // sub-equipment. Values harvested from goingtocamp's /api/equipment.
+  const GTC_EQUIPMENT = [
+    [-32768, 'Tent'], [-32767, 'Truck Camper'], [-32766, 'Pop-Up'],
+    [-32765, "Trailer or RV up to 20'"], [-32764, "Trailer or RV up to 25'"],
+    [-32763, "Trailer or RV up to 30'"], [-32762, "Trailer or RV up to 35'"],
+    [-32761, "Trailer or RV up to 40'"], [-32760, "Trailer or RV up to 45'"],
+    [-32759, "Trailer or RV up to 50'"], [-32758, "Trailer or RV over 50'"],
+  ];
+  function goingToCampUrl({ txId, resId, mapId }, { startDate, nights = 1, subEquipmentId = -32768 } = {}) {
     const today = new Date();
     const start = startDate ? new Date(startDate + 'T00:00:00')
       : (() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d; })();
     const n = Math.max(1, Math.min(30, Math.round(nights) || 1));
     const end = new Date(start); end.setDate(end.getDate() + n);
     const monthAnchor = new Date(today.getFullYear(), today.getMonth(), 1);
+    // searchTime must be LOCAL time with no timezone suffix (e.g.
+    // 2026-06-19T15:31:23.031) — the booking SPA silently refuses to run the
+    // search if given a UTC "...Z" value, so don't use toISOString().
+    const z = (nn, l = 2) => String(nn).padStart(l, '0');
+    const searchTime = `${GTC_DATE(today)}T${z(today.getHours())}:${z(today.getMinutes())}:${z(today.getSeconds())}.${z(today.getMilliseconds(), 3)}`;
     const p = new URLSearchParams({
       transactionLocationId: txId, resourceLocationId: resId, mapId,
       searchTabGroupId: 0, bookingCategoryId: 0,
       startDate: GTC_DATE(start), endDate: GTC_DATE(end), nights: n,
-      isReserving: true, equipmentId: -32768, subEquipmentId: -32768,
+      isReserving: true, equipmentId: -32768, subEquipmentId,
       peopleCapacityCategoryCounts: '[[-32768,null,1,null]]',
       filterData: '{"-32768":"[[1],0,0,0]"}',
-      searchTime: new Date().toISOString(),
+      searchTime,
       flexibleSearch: `[false,false,"${GTC_DATE(monthAnchor)}",1]`,
       view: 'map',
     });
@@ -1660,6 +1676,10 @@
     const modal = document.getElementById('gtc-modal');
     const startInput = document.getElementById('gtc-start');
     const nightsInput = document.getElementById('gtc-nights');
+    const equipSel = document.getElementById('gtc-equip');
+    if (!equipSel.options.length) {
+      equipSel.innerHTML = GTC_EQUIPMENT.map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+    }
     const today = new Date();
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     startInput.min = GTC_DATE(today);
@@ -1676,6 +1696,7 @@
         const url = goingToCampUrl(openGtcModal._ids, {
           startDate: startInput.value || undefined,
           nights: +nightsInput.value || 1,
+          subEquipmentId: +equipSel.value || -32768,
         });
         window.open(url, '_blank', 'noopener');
         close();
