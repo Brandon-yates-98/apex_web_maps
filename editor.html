@@ -1044,6 +1044,12 @@
           <button class="draw-mode-btn" data-mode="draw_polygon"><i class="fa-solid fa-draw-polygon"></i>Polygon</button>
           <button class="draw-mode-btn danger" id="delete-selected-btn"><i class="fa-solid fa-trash"></i>Delete</button>
         </div>
+        <label class="rp-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px">
+          <input type="checkbox" id="snap-toggle" /> Snap to nearby features
+        </label>
+        <div style="font-size:11px;color:rgba(255,255,255,0.25);font-style:italic;margin-top:4px">
+          When on, points and line vertices you draw or move snap to the nearest vertex of a nearby feature.
+        </div>
       </div>
 
       <div class="rp-section">
@@ -1791,8 +1797,15 @@
         // Spur "driveways" (site → nearest road) are now ordinary roads
         // (source='roads', highway='service'; migrations 028/033) — they render
         // and toggle with the roads layer, no longer a campsite companion.
-        // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
-        const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
+        // tent disc (green) standard; RV disc (orange) electrical. Accessible sites
+        // get a blue disc — site_type 'handicapped' OR a Site # starting with "A".
+        const ACCESSIBLE = ['any',
+          ['==', ['get', 'site_type'], 'handicapped'],
+          ['==', ['slice', ['downcase', ['to-string', ['coalesce', ['get', 'ref'], ['get', 'name'], '']]], 0, 1], 'a']];
+        const ICON = ['case',
+          ACCESSIBLE, 'dl-tent@#2563eb',
+          ['==', ['get', 'site_type'], 'electrical'], 'dl-rv@#e67e22',
+          'dl-tent@#27ae60'];
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
           layout: { 'icon-image': ICON,
             // Icons appear at z14.5 (the campground hull owns lower zoom and fades
@@ -3128,6 +3141,51 @@
     if (ok) toast(ok === 1 ? 'Feature deleted' : `${ok} features deleted`);
   });
 
+  // ── Vertex snapping (optional) ──────────────────────────────────
+  // Snap-on-commit: when the toggle is on, each vertex of the feature being
+  // created or moved snaps to the nearest vertex of a nearby existing feature
+  // (within SNAP_PX screen pixels). Applied just before save; the reloaded layer
+  // then renders the snapped geometry.
+  const SNAP_PX = 12;
+  const snapEnabled = () => !!(document.getElementById('snap-toggle') || {}).checked;
+  function eachCoord(geom, fn) {
+    if (!geom) return;
+    const t = geom.type, c = geom.coordinates;
+    if (t === 'Point') fn(c);
+    else if (t === 'LineString' || t === 'MultiPoint') c.forEach(fn);
+    else if (t === 'Polygon' || t === 'MultiLineString') c.forEach(r => r.forEach(fn));
+    else if (t === 'MultiPolygon') c.forEach(p => p.forEach(r => r.forEach(fn)));
+  }
+  function snapOneCoord(coord, exSource, exKey) {
+    const target = map.project(coord);
+    let best = null, bestD = SNAP_PX;
+    for (const src in layerCache) {
+      const gj = layerCache[src];
+      if (!gj || !gj.features) continue;
+      for (const f of gj.features) {
+        const p = f.properties || {};
+        if (src === exSource && String(p.id || p._draw_id || '') === String(exKey)) continue;
+        eachCoord(f.geometry, (c) => {
+          if (Math.abs(c[0] - coord[0]) > 0.01 || Math.abs(c[1] - coord[1]) > 0.01) return;
+          const pp = map.project(c);
+          const d = Math.hypot(pp.x - target.x, pp.y - target.y);
+          if (d < bestD) { bestD = d; best = c; }
+        });
+      }
+    }
+    return best;
+  }
+  // Snap the feature's geometry in place to nearby vertices (excludes itself).
+  function maybeSnap(feature, source) {
+    if (!snapEnabled() || !feature || !feature.geometry) return;
+    const props = feature.properties || {};
+    const exKey = String(props.id || props._draw_id || feature.id || '');
+    eachCoord(feature.geometry, (c) => {
+      const s = snapOneCoord(c, source, exKey);
+      if (s) { c[0] = s[0]; c[1] = s[1]; }
+    });
+  }
+
   // Draw events
   map.on('draw.create', handleDrawCreate);
   map.on('draw.update', handleDrawUpdate);
@@ -3138,7 +3196,9 @@
     if (!source) { toast('Select a target layer in the Draw tab first', true); return; }
     for (const feature of e.features) {
       feature.properties._draw_id = feature.id;
-      await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+      maybeSnap(feature, source);
+      const { error } = await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+      if (error) { toast('Save failed: ' + error.message, true); return; }
     }
     delete layerCache[source];
     await refreshCustomSource(source);
@@ -3151,7 +3211,14 @@
     if (!source) return;
     for (const feature of e.features) {
       feature.properties._draw_id = feature.id;
-      await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+      maybeSnap(feature, source);
+      const { error } = await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+      if (error) { toast('Save failed: ' + error.message, true); return; }
+      // Reflect the snap on the handle for discrete (point/reposition) drags;
+      // direct_select line-vertex edits reconcile on the post-save reload.
+      if (snapEnabled() && draw.getMode && draw.getMode() === 'simple_select') {
+        try { draw.add(feature); } catch {}
+      }
     }
     // While a feature is open for edit its layer copy is hidden and the draw
     // handle already shows the live position — reloading here would re-add the
@@ -3570,7 +3637,9 @@
     feature.properties._draw_id = feature.id;
     feature.properties.custom_data = JSON.stringify(customData);
     draw.setFeatureProperty(feature.id, 'name', name);
-    await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+    maybeSnap(feature, source);
+    const { error: saveErr } = await db.rpc('upsert_drawn_feature', { p_source: source, p_feature: feature });
+    if (saveErr) { toast('Save failed: ' + saveErr.message, true); return; }
     // Photos live in the osm_geometries.photos + photo_meta COLUMNS
     // (get_layer_geojson serves columns, not properties) — persist via RPC.
     const photoKey = String(feature.properties.id || feature.properties._draw_id || '');

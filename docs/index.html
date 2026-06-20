@@ -3197,8 +3197,16 @@
         // Spur "driveways" (site → nearest road) are now ordinary roads
         // (source='roads', highway='service'; migrations 028/033) — they render
         // and toggle with the roads layer, no longer a campsite companion.
-        // tent disc for standard (+ any other type); RV disc for electrical — smaller than the old circles
-        const ICON = ['match', ['get', 'site_type'], 'electrical', 'dl-rv@#e67e22', 'dl-tent@#27ae60'];
+        // tent disc (green) standard; RV disc (orange) electrical. Accessible sites
+        // get a blue disc — keyed on site_type 'handicapped' OR a Site # that starts
+        // with "A" (the park's A1/A2 convention), so just labeling a site "A1" flags it.
+        const ACCESSIBLE = ['any',
+          ['==', ['get', 'site_type'], 'handicapped'],
+          ['==', ['slice', ['downcase', ['to-string', ['coalesce', ['get', 'ref'], ['get', 'name'], '']]], 0, 1], 'a']];
+        const ICON = ['case',
+          ACCESSIBLE, 'dl-tent@#2563eb',
+          ['==', ['get', 'site_type'], 'electrical'], 'dl-rv@#e67e22',
+          'dl-tent@#27ae60'];
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
           layout: { 'icon-image': ICON,
             // Icons appear at z14.5 (the campground hull owns lower zoom and fades
