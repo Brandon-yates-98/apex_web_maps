@@ -1468,6 +1468,9 @@
     } else if (name === 'dl-water') {
       // drinking water — Maki `drinking-water` (CC0). Icons/vendor/maki/drinking-water.svg
       svgGlyph('M6,1A2,2,0,0,0,4,3V6.5a.5.5,0,0,0,.5.5h2A.5.5,0,0,0,7,6.5v-2A.5.5,0,0,1,7.5,4H14V1ZM7,15H4a.5.5,0,0,1-.48-.38L2,8.62a.5.5,0,0,1,.365-.606A.558.558,0,0,1,2.5,8h6a.5.5,0,0,1,.514.485A.47.47,0,0,1,9,8.62l-1.5,6A.5.5,0,0,1,7,15ZM3.65,11H7.36l.5-2H3.14Z', 8, 8, 2.5);
+    } else if (name === 'dl-accessible') {
+      // accessibility (wheelchair) — Maki `wheelchair` (CC0). Icons/vendor/maki/wheelchair.svg
+      svgGlyph('M12,1.5C12,2.3284,11.3284,3,10.5,3S9,2.3284,9,1.5S9.6716,0,10.5,0S12,0.6716,12,1.5z M2.82,4.87l1.74-1.71l1.85,1.29 L5.67,5.7c1.0747,0.3341,2.0207,0.9904,2.71,1.88l0.88-1.5c0.2295-0.4158,0.0785-0.939-0.3373-1.1685 C8.9218,4.911,8.9209,4.9105,8.92,4.91L8.3,4.54L4.79,2.1C4.5927,1.9594,4.3231,1.9805,4.15,2.15l-2,2 C1.9852,4.3716,2.0312,4.6848,2.2528,4.8496C2.4193,4.9735,2.645,4.9816,2.82,4.87z M8.13,10.94 c-0.0143,1.2308-0.5794,2.3904-1.54,3.16c-0.7118,0.5804-1.6016,0.8982-2.52,0.9C1.8261,15,0.0055,13.1839,0,10.94 c0.0023-0.9231,0.3238-1.8169,0.91-2.53c0.1868-0.232,0.398-0.4432,0.63-0.63c0.7131-0.5862,1.6069-0.9077,2.53-0.91 C6.3139,6.8755,8.13,8.6961,8.13,10.94z M6,12.21C6.7679,11.2051,6.5758,9.7679,5.5709,9C4.7501,8.3727,3.6109,8.3727,2.79,9 C2.5283,9.151,2.311,9.3683,2.16,9.63c-0.6923,1.0584-0.3956,2.4777,0.6628,3.17c0.7615,0.4981,1.7457,0.4981,2.5072,0 C5.5805,12.6365,5.8061,12.4378,6,12.21z M14.2,13.21l-2.49-5C11.5906,7.9251,11.3088,7.7425,11,7.75H8.51 c0.3293,0.4578,0.5856,0.9638,0.76,1.5h1.26l2.29,4.58c0.185,0.3728,0.6372,0.525,1.01,0.34c0.3728-0.185,0.525-0.6372,0.34-1.01 L14.2,13.21z', 7.5, 7.5, 2.3);
     } else if (!tint) {
       ctx.beginPath();
       ctx.arc(S / 2, S / 2, S / 2 - 5, 0, Math.PI * 2);
@@ -1803,7 +1806,7 @@
           ['==', ['get', 'site_type'], 'handicapped'],
           ['==', ['slice', ['downcase', ['to-string', ['coalesce', ['get', 'ref'], ['get', 'name'], '']]], 0, 1], 'a']];
         const ICON = ['case',
-          ACCESSIBLE, 'dl-tent@#2563eb',
+          ACCESSIBLE, 'dl-accessible@#2563eb',
           ['==', ['get', 'site_type'], 'electrical'], 'dl-rv@#e67e22',
           'dl-tent@#27ae60'];
         const iconSpec = { id: key+'-icon', type: 'symbol', source: key, minzoom: 14.5,
@@ -1815,7 +1818,17 @@
             'icon-allow-overlap': true, 'icon-ignore-placement': true } };
         if (filter) iconSpec.filter = filter;
         map.addLayer(iconSpec);
-        mapboxIds.push(key+'-icon', CG+'-fill', CG+'-line', CG+'-label');
+        // Site-number labels (Site # / ref — "104", "A1", …) below each marker.
+        const siteLabelSpec = { id: key+'-label', type: 'symbol', source: key, minzoom: 16,
+          layout: {
+            'text-field': ['coalesce', ['get', 'ref'], ''],
+            'text-size': ['interpolate', ['linear'], ['zoom'], 16, 9, 19, 12],
+            'text-offset': [0, 1.05], 'text-anchor': 'top',
+            'text-allow-overlap': true, 'text-ignore-placement': true },
+          paint: { 'text-color': '#14250f', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } };
+        if (filter) siteLabelSpec.filter = filter;
+        map.addLayer(siteLabelSpec);
+        mapboxIds.push(key+'-icon', key+'-label', CG+'-fill', CG+'-line', CG+'-label');
       } else {
         const spec = { id: key+'-circle', type: 'circle', source: key,
           paint: { 'circle-color': color, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
