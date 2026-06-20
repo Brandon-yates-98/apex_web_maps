@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — OpenBeta Climbing Layer Templates
+-- Devil's Lake Mapping Project — OpenBeta Climbing Layer Templates
 -- Run AFTER import_openbeta.py has populated osm_geometries.
 -- License: OpenBeta data is ODbL — attribution required in UI.
 -- ============================================================

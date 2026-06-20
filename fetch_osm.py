@@ -240,7 +240,7 @@ def main():
     payload = urllib.parse.urlencode({"data": QUERY}).encode()
     req = urllib.request.Request(
         OVERPASS_URL, data=payload,
-        headers={"User-Agent": "ApexAdventureAlliance-TrailMap/1.0 (byates@deepwalkresearch.com)"}
+        headers={"User-Agent": "DevilsLakeMappingProject/1.0 (byates@deepwalkresearch.com)"}
     )
 
     try:

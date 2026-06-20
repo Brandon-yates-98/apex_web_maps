@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — campsite_sites layer template
+-- Devil's Lake Mapping Project — campsite_sites layer template
 -- Individual campsite spots digitized from the paper campground map.
 -- Run in Supabase: Dashboard → SQL Editor → New query
 -- ============================================================

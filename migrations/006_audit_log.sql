@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — Edit tracking (audit_log)
+-- Devil's Lake Mapping Project — Edit tracking (audit_log)
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- Captures two kinds of edits, fully server-side (no client change):

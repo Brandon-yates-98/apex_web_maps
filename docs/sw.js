@@ -1,4 +1,4 @@
-/* Devil's Lake Community Map — service worker for the public map.
+/* Devil's Lake Mapping Project — service worker for the public map.
  *
  * Caching policy:
  *  - App shell (the HTML page, manifest, icons): precached at install (so the
@@ -19,7 +19,7 @@
  *    key — the page persists those to IndexedDB itself (see rpcCached()).
  */
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `dl-shell-${VERSION}`;
 const CDN = `dl-cdn-${VERSION}`;
 const DATA = `dl-data-${VERSION}`;
@@ -74,8 +74,7 @@ self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(
-      // 'apex-' clears caches from before the Devil's Lake rebrand
-      names.filter(n => (n.startsWith('dl-') || n.startsWith('apex-')) && !ALL_CACHES.includes(n)).map(n => caches.delete(n))
+      names.filter(n => n.startsWith('dl-') && !ALL_CACHES.includes(n)).map(n => caches.delete(n))
     );
     await self.clients.claim();
   })());
@@ -83,7 +82,7 @@ self.addEventListener('activate', event => {
 
 const OFFLINE_FALLBACK_HTML = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Offline — Devil's Lake Community Map</title></head>
+<title>Offline — Devil's Lake Mapping Project</title></head>
 <body style="background:#0a140a;color:rgba(255,255,255,0.7);font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:24px">
 <div><h2 style="color:#9bc23c">You're offline</h2>
 <p>This map hasn't been saved on this device yet.<br>Connect once and tap "Save map for offline use".</p></div>

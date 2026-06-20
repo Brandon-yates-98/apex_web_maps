@@ -1,7 +1,7 @@
 # Map marker icons
 
-Apex draws every map marker as a **canvas-baked glyph** in `drawMapGlyph()`
-(see `apex_editor.html` / `docs/index.html`), not as a Mapbox sprite. This is
+This project draws every map marker as a **canvas-baked glyph** in `drawMapGlyph()`
+(see `editor.html` / `docs/index.html`), not as a Mapbox sprite. This is
 deliberate: baked glyphs render offline (PWA roadmap, and Mapbox's TOS forbids
 caching their sprite/tiles), draw atomically with their marker disc, and size
 consistently regardless of basemap.

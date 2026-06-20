@@ -1,10 +1,10 @@
-# Apex Web Maps
+# Devil's Lake Mapping Project
 
 An installable, offline-capable web map for outdoor recreation around **Devil's Lake / Baraboo / Sauk County, Wisconsin** — trails, climbing, campsites, and points of interest. No app store, no native code: one HTML file, Mapbox GL JS, and Supabase.
 
-This is an **independent community project**. It supports and drives traffic to [Apex Adventure Alliance](https://apexadventurealliance.com), but it is not operated by them — ownership and liability stay separate (see [Independence](#independence)).
+This is an **independent, noncommercial community project** — ownership and liability stay with the project itself (see [Independence](#independence)).
 
-**Live map:** https://brandon-yates-98.github.io/apex_web_maps/
+**Live map:** https://brandon-yates-98.github.io/devils-lake-mapping-project/
 
 - 📱 Installable on iPhone/Android via *Add to Home Screen*
 - 🛰️ Works offline at the trailhead — trails, climbs, POIs, photos, and filters all cached on-device
@@ -14,7 +14,7 @@ This is an **independent community project**. It supports and drives traffic to 
 ## What this project is for
 
 1. **Be a genuinely useful, free resource** — a high-quality, offline-ready map of the Devil's Lake / Sauk County outdoors that anyone can use at the trailhead without a paywall or an account.
-2. **Support local businesses** — surface local outdoor businesses and send people their way, including driving traffic to Apex Adventure Alliance.
+2. **Support local businesses** — surface local outdoor businesses (campgrounds, shops, guides, outfitters) and send visitors their way.
 3. **Collect community photos & local knowledge** — let the people who actually use these places contribute photos and on-the-ground detail back into the map.
 4. **Contribute back to open source** — upstream verifiable facts (campsite locations, trail details) to OpenStreetMap and OpenBeta so the wider commons improves, not just this map.
 
@@ -29,7 +29,7 @@ No one is meant to earn a wage or sell access from operating this map.
 
 ### Independence
 
-This is an independent project and is **not affiliated with, operated by, or the responsibility of** Apex Adventure Alliance, onX, or the Wisconsin DNR. It supports Apex Adventure Alliance and may use their domain for the standard public experiences, but AAA is deliberately kept out of the ownership and liability chain. The map uses only OpenStreetMap, OpenBeta, and original survey data — **no onX data**.
+This is an independent project and is **not affiliated with, operated by, or the responsibility of** onX or the Wisconsin DNR. The map uses only OpenStreetMap, OpenBeta, and original survey data — **no onX data**.
 
 ## License — please read before reusing
 
@@ -62,7 +62,7 @@ docs/                    ← the deployed site (GitHub Pages serves this folder)
   sw.js                  ← service worker: offline caching (never caches Mapbox tiles — TOS)
   manifest.webmanifest   ← PWA manifest
   icons/                 ← app icons (regenerate with make_icons.py)
-apex_editor.html         ← admin editor (auth-gated; deliberately NOT deployed)
+editor.html              ← admin editor (auth-gated; deliberately NOT deployed)
 migrations/              ← Supabase SQL migrations, in order
 licensing/               ← draft noncommercial license + per-layer terms (pending review)
 supabase_setup.sql       ← initial schema
@@ -78,4 +78,6 @@ compute_drive_times.py   ← one-time drive-time precompute (Mapbox Directions A
 3. Import data: `op run --env-file=.env.tpl -- python import_openbeta.py` (and the other importers). Imports need the `service_role` key; the web app uses only the `anon` key.
 4. Serve `docs/` over HTTPS (GitHub Pages: Settings → Pages → branch `main`, folder `/docs`).
 
-Independent community project — not operated by Apex Adventure Alliance. Climbing is dangerous — this map is informational and is no substitute for guidebooks, local knowledge, or judgment.
+**Forking this for another area?** See [`REPLICATE.md`](REPLICATE.md) for the full step-by-step.
+
+Independent, noncommercial community project. Climbing is dangerous — this map is informational and is no substitute for guidebooks, local knowledge, or judgment.

@@ -1,5 +1,5 @@
     -- ============================================================
-    -- Apex Web Maps — Photo storage + usage tracking
+    -- Devil's Lake Mapping Project — Photo storage + usage tracking
     -- Run in Supabase: Dashboard → SQL Editor → New query
     --
     -- 1. Public "photos" bucket: anyone can view (the map hotlinks them),

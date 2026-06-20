@@ -1,4 +1,4 @@
-"""Generate PWA icons from the Apex logo on the app's dark background.
+"""Generate PWA icons from the project logo on the app's dark background.
 
 Logo is sized to ~60% of the canvas so the icons survive iOS rounded
 corners and Android maskable cropping. Run: python make_icons.py

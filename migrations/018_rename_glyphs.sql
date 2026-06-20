@@ -1,9 +1,9 @@
 -- ============================================================
--- Devil's Lake Community Map — rebrand marker glyph ids
+-- Devil's Lake Mapping Project — rebrand marker glyph ids
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- drawMapGlyph() in both maps now answers to 'dl-*' names
--- ('apex-*' before the rebrand — see branding/apex-restore/).
+-- ('apex-*' before the rebrand).
 -- ============================================================
 
 update layer_templates

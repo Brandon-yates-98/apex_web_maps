@@ -1,5 +1,5 @@
 -- ============================================================
--- Devil's Lake Community Map — photo gallery infrastructure
+-- Devil's Lake Mapping Project — photo gallery infrastructure
 --
 -- 1. photo_meta jsonb column on osm_geometries — ordered list of
 --    {url, caption} objects; authoritative order for the gallery.

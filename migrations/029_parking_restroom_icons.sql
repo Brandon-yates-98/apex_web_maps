@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — fix parking visibility + parking/restroom icons
+-- Devil's Lake Mapping Project — fix parking visibility + parking/restroom icons
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- Two problems, both fixed here:

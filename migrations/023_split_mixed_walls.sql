@@ -1,5 +1,5 @@
 -- ============================================================
--- Devil's Lake Community Map — split mixed walls by climb type
+-- Devil's Lake Mapping Project — split mixed walls by climb type
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- 16 walls carry both routes and boulders. The majority type keeps

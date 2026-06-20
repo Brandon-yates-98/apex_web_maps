@@ -38,7 +38,6 @@ public PolyForm Noncommercial License. Such a grant is limited,
 non-transferable, and provided as-is without warranty.
 
 ## What this does NOT restrict
-- **Featuring or linking to** local businesses, partners, or
-  apexadventurealliance.com (referral/editorial — not commercial use of the
-  project).
+- **Featuring or linking to** local businesses, partners, or booking sites
+  (referral/editorial — not commercial use of the project).
 - The volunteer operating model described above.

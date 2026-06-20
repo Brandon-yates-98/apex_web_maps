@@ -14,8 +14,8 @@ inventory, drive-time fields, climbing sectors/hulls) — are licensed under
 
 <https://creativecommons.org/licenses/by-nc/4.0/>
 
-Attribution: "Devil's Lake Community Map" (independent community project).
-<!-- Set to the PROJECT OWNER once confirmed; do NOT attribute to AAA. -->
+Attribution: "Devil's Lake Mapping Project" (independent community project).
+<!-- Set to the PROJECT OWNER once confirmed; do NOT attribute to a third party. -->
 
 ## 2. OpenStreetMap-derived data — ODbL 1.0 (cannot be NC)
 

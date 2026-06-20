@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — seed GoingToCamp deep links for the remaining
+-- Devil's Lake Mapping Project — seed GoingToCamp deep links for the remaining
 -- Wisconsin State Parks campgrounds. Applied via Supabase MCP; recorded here.
 --
 -- IDs harvested from wisconsin.goingtocamp.com's own API

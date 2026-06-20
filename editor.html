@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Map Editor — Devil's Lake Community Map</title>
+  <title>Map Editor — Devil's Lake Mapping Project</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
@@ -859,9 +859,9 @@
 <!-- ══ LOGIN MODAL ═════════════════════════════════════════════ -->
 <div id="login-modal" class="show">
   <div id="login-box">
-    <img src="docs/icons/logo-mark.png" alt="Devil's Lake Community Map" />
+    <img src="docs/icons/logo-mark.png" alt="Devil's Lake Mapping Project" />
     <h2>Map Editor</h2>
-    <p>DEVIL'S LAKE COMMUNITY MAP</p>
+    <p>DEVIL'S LAKE MAPPING PROJECT</p>
     <input class="login-input" type="email" id="login-email" placeholder="Email" autocomplete="email" />
     <input class="login-input" type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
     <button id="login-btn">Sign In</button>
@@ -871,10 +871,10 @@
 
 <!-- ══ HEADER ══════════════════════════════════════════════════ -->
 <header id="site-header">
-  <img class="header-logo" src="docs/icons/logo-mark.png" alt="Devil's Lake Community Map" />
+  <img class="header-logo" src="docs/icons/logo-mark.png" alt="Devil's Lake Mapping Project" />
   <div class="header-divider"></div>
   <div class="header-brand">
-    <span class="header-org">Devil's Lake Community Map</span>
+    <span class="header-org">Devil's Lake Mapping Project</span>
     <span class="header-title">Map Editor</span>
   </div>
   <div class="header-spacer"></div>
@@ -3522,7 +3522,7 @@
       // Legacy fallback: show description textarea when no schema defined
       const div = document.createElement('div');
       div.innerHTML = `<label class="rp-label">Description</label>
-        <textarea class="rp-textarea feat-custom-field" data-field="apex_description"
+        <textarea class="rp-textarea feat-custom-field" data-field="custom_description"
           placeholder="Notes, climbing description, beta…" rows="3"></textarea>`;
       container.appendChild(div);
       return;

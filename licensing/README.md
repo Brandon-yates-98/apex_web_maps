@@ -34,10 +34,9 @@ numbers, positions) are not copyrightable, so upstreaming facts is clean.
 ## Promotion steps (once counsel approves)
 
 1. Confirm the copyright-holder legal entity throughout — must be **you or a
-   separate entity you form, NOT Apex Adventure Alliance** (keep AAA out of the
-   ownership/liability chain).
-2. Rename the repo/app away from "Apex" to a neutral name (e.g., "Devil's Lake
-   Community Map"); surface a short `DISCLAIMER.md` in the app footer/About.
+   separate entity you form** (keep ownership and liability with the project).
+2. Use the project name ("Devil's Lake Mapping Project") consistently; surface a
+   short `DISCLAIMER.md` in the app footer/About.
 3. Confirm the volunteer operator model in `PERMITTED-USES.md` with counsel
    (gift-not-exchange framing; no funds through the operator).
 4. Audit data provenance (`ATTRIBUTION.md`): confirm no onX data, and resolve the

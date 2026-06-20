@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — Custom marker icons for climbing layers
+-- Devil's Lake Mapping Project — Custom marker icons for climbing layers
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- 'apex-cliff' and 'apex-boulder' are drawn in-app by drawMapGlyph()

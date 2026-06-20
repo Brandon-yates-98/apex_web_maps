@@ -6,8 +6,8 @@
 -->
 
 Copyright (c) 2026 [PROJECT OWNER — your name, or a separate entity you form]
-<!-- Do NOT name Apex Adventure Alliance as the holder. This project is
-     independent of AAA; see DISCLAIMER.md and TRADEMARKS.md. -->
+<!-- Do NOT name a third party as the holder; ownership stays with the project
+     owner. See DISCLAIMER.md and TRADEMARKS.md. -->
 
 This software is licensed under the **PolyForm Noncommercial License 1.0.0**
 (full text below), **plus** the operator model / additional permissions in
@@ -18,7 +18,7 @@ Names, logos, and other brand features are **not** licensed here — see
 see [`DATA-AND-CONTENT-LICENSE.md`](./DATA-AND-CONTENT-LICENSE.md). This is an
 independent community project — see [`DISCLAIMER.md`](./DISCLAIMER.md).
 
-> Required Notice: Copyright [PROJECT OWNER] — Devil's Lake Community Map
+> Required Notice: Copyright [PROJECT OWNER] — Devil's Lake Mapping Project
 
 ---
 

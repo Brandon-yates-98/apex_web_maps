@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — Add custom popup template + CSS to layer_templates
+-- Devil's Lake Mapping Project — Add custom popup template + CSS to layer_templates
 -- Lets each layer carry its own popup HTML template and CSS.
 -- Updates get_experience_config to return popup_template / popup_css.
 -- Safe to re-run (IF NOT EXISTS / CREATE OR REPLACE).

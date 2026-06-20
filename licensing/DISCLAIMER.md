@@ -3,11 +3,11 @@
 > ⚠️ **DRAFT — pending review.** Surface a short version of this in-app
 > (footer / About) as well as in the repo.
 
-**Devil's Lake Community Map is an independent, volunteer community project.**
+**Devil's Lake Mapping Project is an independent, volunteer community project.**
 
-It is **not affiliated with, operated by, sponsored by, or endorsed by** Apex
-Adventure Alliance, onX / onX Backcountry, the Wisconsin Department of Natural
-Resources, or any campground, business, or organization featured on the map.
+It is **not affiliated with, operated by, sponsored by, or endorsed by** onX /
+onX Backcountry, the Wisconsin Department of Natural Resources, or any
+campground, business, or organization featured on the map.
 Any links to or mentions of those parties are for community information or to
 show support, and do not imply a relationship.
 

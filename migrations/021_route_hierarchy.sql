@@ -1,5 +1,5 @@
 -- ============================================================
--- Devil's Lake Community Map — synthetic route hierarchy
+-- Devil's Lake Mapping Project — synthetic route hierarchy
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- The bouldering tree has one root (Devil's Lake Bouldering) the

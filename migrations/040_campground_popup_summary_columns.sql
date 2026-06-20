@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — campground popup: group price + drive times into columns
+-- Devil's Lake Mapping Project — campground popup: group price + drive times into columns
 -- Applied via Supabase MCP; recorded for the repo log.
 --
 -- Wraps the price (+ "prices checked") in .cp-pricecol and the drive-time lines

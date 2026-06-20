@@ -1,12 +1,12 @@
 -- ============================================================
--- Apex Web Maps — per-experience label / layer_group overrides
+-- Devil's Lake Mapping Project — per-experience label / layer_group overrides
 -- Applied via Supabase MCP (apply_migration). Recorded here for the repo log.
 --
 -- label and layer_group live on layer_templates (global). To curate one
 -- experience's sidebar without disturbing others (e.g. the non-public
 -- 'default' editor map), add nullable per-experience overrides and have
 -- get_experience_config coalesce them over the template values. The editor
--- (apex_editor.html) coalesces the same two columns in its layer normalizer.
+-- (editor.html) coalesces the same two columns in its layer normalizer.
 --
 -- Then reorganize the public 'campsites' experience Camping group to:
 --   Campgrounds (pois_camping, renamed) -> Campsites (campsite_sites) -> Buildings

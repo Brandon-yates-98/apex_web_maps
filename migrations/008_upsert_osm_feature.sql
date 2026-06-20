@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — Idempotent OSM re-import (upsert by _osm_id)
+-- Devil's Lake Mapping Project — Idempotent OSM re-import (upsert by _osm_id)
 -- Run in Supabase: Dashboard → SQL Editor → New query
 --
 -- import_feature() always INSERTs, so re-running an OSM pull creates

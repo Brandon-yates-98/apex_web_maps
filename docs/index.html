@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Devil's Lake Community Map</title>
-  <meta name="description" content="Interactive community map of Devil's Lake — trails, climbing, camping, and more. Works offline — save the map and take it to the crag." />
+  <title>Devil's Lake Mapping Project</title>
+  <meta name="description" content="Interactive map of Devil's Lake — trails, climbing, camping, and more. Works offline — save the map and take it to the crag." />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Devil's Lake Community Map" />
+  <meta property="og:title" content="Devil's Lake Mapping Project" />
   <meta property="og:description" content="Interactive trail, climbing, and adventure maps. Works offline on your phone." />
   <meta property="og:image" content="icons/icon-512.png" />
   <link rel="icon" type="image/png" href="icons/icon-192.png" />
@@ -1118,10 +1118,10 @@
   <button id="menu-toggle" aria-label="Toggle layer panel">
     <i class="fa-solid fa-bars"></i>
   </button>
-  <img class="header-logo" src="icons/logo-mark.png" alt="Devil's Lake Community Map" />
+  <img class="header-logo" src="icons/logo-mark.png" alt="Devil's Lake Mapping Project" />
   <div class="header-divider"></div>
   <div class="header-brand">
-    <span class="header-org">Devil's Lake Community Map</span>
+    <span class="header-org">Devil's Lake Mapping Project</span>
     <span class="header-title" id="map-title">Loading&hellip;</span>
   </div>
   <div class="header-spacer"></div>
@@ -1135,8 +1135,8 @@
 <main id="map-wrapper">
 
   <div id="loading-screen">
-    <img class="loading-logo" src="icons/logo-mark.png" alt="Devil's Lake Community Map" />
-    <div class="loading-title">Devil's Lake Community Map</div>
+    <img class="loading-logo" src="icons/logo-mark.png" alt="Devil's Lake Mapping Project" />
+    <div class="loading-title">Devil's Lake Mapping Project</div>
     <div class="loading-sub">Loading map data</div>
     <div class="loading-dots">
       <div class="loading-dot"></div>
@@ -1252,8 +1252,8 @@
     <div class="panel-footer">
       <img class="panel-footer-logo"
            src="icons/logo-mark.png"
-           alt="Devil's Lake Community Map" />
-      <div class="panel-footer-tagline">Devil's Lake Community Map</div>
+           alt="Devil's Lake Mapping Project" />
+      <div class="panel-footer-tagline">Devil's Lake Mapping Project</div>
     </div>
   </aside>
 
@@ -2564,7 +2564,7 @@
       }
     }
 
-    // Custom fields: render using field_schema labels if defined, else fall back to apex_description
+    // Custom fields: render using field_schema labels if defined, else fall back to custom_description
     const fieldSchema = cfg.field_schema || [];
     let customHTML = '';
     if (fieldSchema.length) {
@@ -2580,10 +2580,10 @@
         .filter(Boolean)
         .join('');
       if (fieldRows) customHTML = `<div style="border-bottom:1px solid #eee;margin-bottom:4px">${fieldRows}</div>`;
-    } else if (customData.apex_description) {
+    } else if (customData.custom_description) {
       customHTML = `<div class="popup-custom-desc">
         <div class="popup-custom-desc-label">Description</div>
-        <div class="popup-custom-desc-text">${customData.apex_description}</div>
+        <div class="popup-custom-desc-text">${customData.custom_description}</div>
       </div>`;
     }
 
@@ -2753,7 +2753,7 @@
   let usedOfflineStyle = navigator.onLine === false;
 
   // Embed mode (?embed=1): trim chrome and use cooperative gestures so the map
-  // doesn't hijack page scroll when iframed on a partner/Apex page.
+  // doesn't hijack page scroll when iframed on a partner page.
   const IS_EMBED = new URLSearchParams(location.search).get('embed') === '1';
   if (IS_EMBED) document.body.classList.add('embed');
 
@@ -4160,7 +4160,7 @@
 
     // Apply header
     document.getElementById('map-title').textContent = exp.title || 'Trail Map';
-    document.title = `${exp.title} — Devil's Lake Community Map`;
+    document.title = `${exp.title} — Devil's Lake Mapping Project`;
 
     // Apply the experience's basemap (default outdoors is already loaded).
     // Skipped when running on the offline fallback style — a remote style

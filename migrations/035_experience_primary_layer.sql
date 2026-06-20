@@ -1,5 +1,5 @@
 -- ============================================================
--- Apex Web Maps — experiences.primary_layer
+-- Devil's Lake Mapping Project — experiences.primary_layer
 -- Applied via Supabase MCP; recorded here for the repo log.
 --
 -- The "primary layer" is the layer whose features the top-of-map experience

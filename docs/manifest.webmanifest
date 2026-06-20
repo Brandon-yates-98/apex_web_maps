@@ -1,7 +1,7 @@
 {
-  "name": "Devil's Lake Community Map",
+  "name": "Devil's Lake Mapping Project",
   "short_name": "Devil's Lake Map",
-  "description": "Interactive community map of Devil's Lake — trails, climbing, camping, and more.",
+  "description": "Interactive map of Devil's Lake — trails, climbing, camping, and more.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
