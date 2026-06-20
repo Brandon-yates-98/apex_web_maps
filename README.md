@@ -20,12 +20,13 @@ This is an **independent, noncommercial community project** — ownership and li
 
 ### Noncommercial by design
 
-This project is **not for direct commercial use.** The only money that is meant to flow is:
+This project is **not for commercial use**, and it isn't run for money:
 
-- **Donations to cover the project's running costs** (hosting, map tiles, data) — *not* wages or profit; and
-- **Donations to local outdoor nonprofits** in exchange for custom map experiences.
+- It's built and run by an **unpaid volunteer**; **no** wages, fees, or donations flow to the operator, and incidental running costs are covered personally.
+- "Custom map experiences" for local businesses or organizations are provided **free, as a gift** — never sold, and never conditioned on a payment or donation.
+- The operator may *suggest* supporting a **local outdoor nonprofit**, but any such donation is entirely **voluntary**, paid **directly to the nonprofit**, and **never a condition of — or routed through — the project**.
 
-No one is meant to earn a wage or sell access from operating this map.
+No one earns a wage or sells access from operating this map. Full operator model: [`licensing/PERMITTED-USES.md`](licensing/PERMITTED-USES.md).
 
 ### Independence
 
@@ -33,15 +34,17 @@ This is an independent project and is **not affiliated with, operated by, or the
 
 ## License — please read before reusing
 
-This project is **source-available and noncommercial** (not OSI "open source").
+This project is **source-available** and is **moving to a noncommercial license** (not OSI "open source").
 
-The licensing is being moved to the **[PolyForm Noncommercial License 1.0.0](licensing/LICENSE.md)**, with the full per-layer scaffold in [`licensing/`](licensing/) (code, data/content, trademarks, disclaimer, attribution, and community-submission terms). **Those files are DRAFTS pending legal review** — until they are promoted (see [`licensing/README.md`](licensing/README.md)), the operative license remains the root [`LICENSE.md`](LICENSE.md).
+**What's operative today:** the root [`LICENSE.md`](LICENSE.md) — **PolyForm Shield 1.0.0**, which is source-available and permits use *except* building a competing product. The intended end state is the **[PolyForm Noncommercial License 1.0.0](licensing/LICENSE.md)** plus the per-layer scaffold in [`licensing/`](licensing/) (code, data/content, trademarks, disclaimer, attribution, community-submission terms). **Those files are DRAFTS pending legal review and are not yet in force** (see [`licensing/README.md`](licensing/README.md)).
 
-**Plain-English summary** (the license text governs):
+**Plain-English summary of the _intended_ noncommercial license** (the license text governs):
 
-> ✅ You run a climbing or outdoors community somewhere else? Use this freely for **noncommercial** purposes — copy it, adapt it, build your own community's map from it. That's why it's published.
+> ✅ Running an outdoors community somewhere else? Use it freely for **noncommercial** purposes — copy it, adapt it, build your own community's map from it. That's why it's published.
 >
-> ❌ You may **not** use it for direct commercial purposes (selling access, operating it for profit or wages). Cost-recovery donations and donations to local outdoor nonprofits for custom experiences are the intended exceptions.
+> ❌ Don't use it for **commercial** purposes — selling access, or operating it for profit or wages.
+
+The project's own custom-experience and donation activities are deliberately structured to stay noncommercial (gifts + voluntary, decoupled donations) — they are **not** a commercial exception. See [`licensing/PERMITTED-USES.md`](licensing/PERMITTED-USES.md).
 
 If you're unsure whether your use qualifies, open an issue or get in touch — permission for genuine noncommercial uses is the default answer.
 
