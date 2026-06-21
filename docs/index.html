@@ -565,6 +565,21 @@
     }
     .popup-directions-btn:hover { filter: brightness(1.08); }
     .popup-directions-btn i { font-size: 11px; }
+    /* ─── Street View (campsites) ─── */
+    .popup-streetview-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; margin-top: 7px; padding: 7px; border-radius: 6px; cursor: pointer;
+      background: linear-gradient(135deg,#5d6d7e,#34495e); border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700;
+      transition: filter 0.15s;
+    }
+    .popup-streetview-btn:hover { filter: brightness(1.08); }
+    .popup-streetview-btn i { font-size: 11px; }
+    .popup-streetview { margin-top: 7px; }
+    .popup-streetview[hidden] { display: none; }
+    .popup-streetview iframe {
+      width: 100%; height: 200px; border: 0; border-radius: 6px; display: block;
+    }
     .popup-photos {
       display: flex; gap: 5px; overflow-x: auto;
       margin: 2px 0 2px; padding-bottom: 3px;
@@ -2510,6 +2525,20 @@
     });
   }
 
+  // ── Street View (Google Maps Embed API, Street View mode) ───────
+  // The Embed API is free with UNLIMITED usage — no per-view charge, no quota
+  // tier — and the embedded panorama is interactive (pan/zoom/step). The key
+  // ships in the client, so in the Google Cloud console restrict it to (1) the
+  // Maps Embed API only and (2) this site's HTTP referrer. Leave '' to hide the
+  // Street View control entirely. Only campsite sources get the control.
+  const STREETVIEW_EMBED_KEY = '';
+  const STREETVIEW_SOURCES = new Set(['campsite_sites']);
+  function streetViewEmbedURL(lng, lat) {
+    return 'https://www.google.com/maps/embed/v1/streetview'
+      + `?key=${encodeURIComponent(STREETVIEW_EMBED_KEY)}`
+      + `&location=${lat},${lng}&fov=90`;
+  }
+
   function buildPopupHTML(props, sourceKey) {
     const cfg = layerMeta[sourceKey] || { label: 'Feature', color: '#7f8c8d' };
     if (cfg.popup_template && cfg.popup_template.trim()) {
@@ -2712,6 +2741,10 @@
             </div>`
           : ''}
         <button class="popup-directions-btn"><i class="fa-solid fa-route"></i> Directions</button>
+        ${STREETVIEW_EMBED_KEY && STREETVIEW_SOURCES.has(sourceKey)
+          ? `<button class="popup-streetview-btn" type="button" aria-expanded="false"><i class="fa-solid fa-street-view"></i> Street View</button>
+             <div class="popup-streetview" hidden></div>`
+          : ''}
         <button class="popup-submit-btn"
           data-source="${escapeHtml(sourceKey)}"
           data-key="${escapeHtml(props._draw_id || props.area_id || '')}"
@@ -3878,6 +3911,34 @@
         const dest = featureCentroid(feature.geometry)
           || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]);
         openDirections(dest);
+      });
+      // Street View: toggle the panorama; build the (free, unlimited) Embed-API
+      // iframe lazily on first open so opening a campsite popup fires no Google
+      // request until the user asks to see it.
+      const svBtn = el.querySelector('.popup-streetview-btn');
+      if (svBtn) svBtn.addEventListener('click', () => {
+        const box = el.querySelector('.popup-streetview');
+        if (!box) return;
+        if (box.hasAttribute('hidden')) {
+          if (!box.dataset.loaded) {
+            const c = featureCentroid(feature.geometry)
+              || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]);
+            if (c) {
+              const iframe = document.createElement('iframe');
+              iframe.src = streetViewEmbedURL(c[0], c[1]);
+              iframe.loading = 'lazy';
+              iframe.allowFullscreen = true;
+              iframe.referrerPolicy = 'no-referrer-when-downgrade';
+              box.appendChild(iframe);
+              box.dataset.loaded = '1';
+            }
+          }
+          box.removeAttribute('hidden');
+          svBtn.setAttribute('aria-expanded', 'true');
+        } else {
+          box.setAttribute('hidden', '');
+          svBtn.setAttribute('aria-expanded', 'false');
+        }
       });
       // Reserve links: intercept supported providers to collect dates (+ rig /
       // site type) and deep-link to the live availability page.
