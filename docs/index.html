@@ -2559,10 +2559,14 @@
   // Street View control entirely. Only campsite sources get the control.
   const STREETVIEW_EMBED_KEY = 'AIzaSyD7ogMBpHRomETaw_BypsdbB40HQ4CM220';
   const STREETVIEW_SOURCES = new Set(['campsite_sites']);
-  function streetViewEmbedURL(lng, lat) {
-    return 'https://www.google.com/maps/embed/v1/streetview'
+  function streetViewEmbedURL(lng, lat, heading) {
+    let url = 'https://www.google.com/maps/embed/v1/streetview'
       + `?key=${encodeURIComponent(STREETVIEW_EMBED_KEY)}`
-      + `&location=${lat},${lng}&fov=90`;
+      + `&location=${lat},${lng}&fov=90&pitch=0`;
+    // heading: precomputed bearing from the road standing point toward the campsite
+    // (campsite_sites sv_heading). Omitted for on-road sites -> Street View default facing.
+    if (heading != null && heading !== '') url += `&heading=${heading}`;
+    return url;
   }
 
   // Photo gallery strip (thumbs + count), shared by the generic and custom-template
@@ -3954,9 +3958,14 @@
       // a campsite popup fires no Google request until the user asks to see it.
       const svBtn = el.querySelector('.popup-streetview-btn');
       if (svBtn) svBtn.addEventListener('click', () => {
-        const c = featureCentroid(feature.geometry)
-          || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]);
-        if (c) openStreetView(c[0], c[1], feature.properties && feature.properties.name);
+        const p = feature.properties || {};
+        // Prefer the precomputed camera (sv_lng/sv_lat = road standing point,
+        // sv_heading = bearing toward the site); fall back to the feature centroid.
+        const c = (p.sv_lng != null && p.sv_lat != null)
+          ? [p.sv_lng, p.sv_lat]
+          : (featureCentroid(feature.geometry)
+             || (Array.isArray(lngLat) ? lngLat : [lngLat.lng, lngLat.lat]));
+        if (c) openStreetView(c[0], c[1], p.name, p.sv_heading);
       });
       // Reserve links: intercept supported providers to collect dates (+ rig /
       // site type) and deep-link to the live availability page.
@@ -4741,11 +4750,11 @@
   });
 
   // ── Street View modal ───────────────────────────────────────────
-  function openStreetView(lng, lat, title) {
+  function openStreetView(lng, lat, title, heading) {
     const wrap = document.getElementById('sv-frame-wrap');
     wrap.innerHTML = '';
     const iframe = document.createElement('iframe');
-    iframe.src = streetViewEmbedURL(lng, lat);
+    iframe.src = streetViewEmbedURL(lng, lat, heading);
     iframe.loading = 'lazy';
     iframe.allowFullscreen = true;
     iframe.referrerPolicy = 'no-referrer-when-downgrade';
