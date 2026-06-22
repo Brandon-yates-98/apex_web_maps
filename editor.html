@@ -4429,7 +4429,11 @@
     sources: {
       'aerial-hd': {
         type: 'raster',
-        tiles: ['https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image'],
+        // 512px export over a 256-logical-tile bbox = 2x oversampling, so each tile
+        // carries the finer source detail (down to the 3-inch / 0.0762 m native GSD)
+        // and stays crisp on HiDPI screens. tileSize stays 256 so this oversamples
+        // rather than just re-batching into bigger tiles.
+        tiles: ['https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=jpgpng&f=image'],
         tileSize: 256,
         attribution: 'WI DNR / WROC leaf-off orthoimagery',
       },
