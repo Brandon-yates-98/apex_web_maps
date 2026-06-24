@@ -5,6 +5,9 @@ name: _probe_gtc (throwaway)
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/_probe_gtc.yml'
 
 permissions:
   contents: read
