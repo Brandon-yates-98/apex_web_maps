@@ -266,6 +266,94 @@
     .popup-photo-count {
       font-size: 9.5px; color: #999; margin-bottom: 6px; margin-top: 1px;
     }
+    /* Custom-template description block (match the public map) */
+    .popup-custom-desc { padding: 8px 0 6px; border-bottom: 1px solid #e8e8e8; margin-bottom: 2px; }
+    .popup-custom-desc-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #999; margin-bottom: 4px; }
+    .popup-custom-desc-text { font-size: 12px; color: #222; line-height: 1.55; white-space: pre-wrap; }
+    /* Header count chip (area popups) */
+    .popup-climbcount { background: rgba(255,255,255,0.14); margin-left: 5px; }
+    /* External climb links (OpenBeta + Mountain Project) */
+    .popup-ob-link {
+      display: flex; align-items: center; gap: 5px; margin-top: 8px;
+      padding-top: 8px; border-top: 1px solid #eee;
+      font-size: 11px; font-weight: 700; color: #e74c3c;
+      text-decoration: none;
+    }
+    .popup-ob-link:hover { color: #c0392b; }
+    .popup-ob-link i { font-size: 9px; }
+    .popup-ext-links { display: flex; gap: 14px; }
+    .popup-mp-link { color: #1a7bb9 !important; }
+    .popup-mp-link:hover { color: #135e8e !important; }
+    /* Action buttons (match the public map) */
+    .popup-directions-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; margin-top: 8px; padding: 7px; border-radius: 6px; cursor: pointer;
+      background: linear-gradient(135deg,#5a9fe0,#3d7ec4); border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700;
+      transition: filter 0.15s;
+    }
+    .popup-directions-btn:hover { filter: brightness(1.08); }
+    .popup-directions-btn i { font-size: 11px; }
+    .popup-streetview-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; margin-top: 7px; padding: 7px; border-radius: 6px; cursor: pointer;
+      background: linear-gradient(135deg,#5d6d7e,#34495e); border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700;
+      transition: filter 0.15s;
+    }
+    .popup-streetview-btn:hover { filter: brightness(1.08); }
+    .popup-streetview-btn i { font-size: 11px; }
+    .popup-submit-btn {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      width: 100%; margin-top: 7px; padding: 6px;
+      background: none; border: 1px dashed #d0d0d0; border-radius: 6px;
+      color: #aaa; font-family: 'Inter', sans-serif; font-size: 10.5px;
+      font-weight: 600; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .popup-submit-btn:hover { border-color: #9bc23c; color: #6c8c2e; }
+    /* ─── Campsite popup card (match the public map) ─── */
+    .cs-pop { width: 300px; max-width: 100%; }
+    .cs-pop-hero {
+      position: relative; display: block; width: 100%; height: 158px;
+      cursor: pointer; background: #16210f; overflow: hidden;
+    }
+    .cs-pop-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cs-pop-hero .cs-pop-expand {
+      position: absolute; bottom: 8px; right: 8px; display: flex;
+      align-items: center; justify-content: center; width: 26px; height: 26px;
+      border-radius: 6px; background: rgba(0,0,0,0.5); color: #fff;
+      font-size: 11px; transition: background 0.15s;
+    }
+    .cs-pop-hero:hover .cs-pop-expand { background: rgba(0,0,0,0.72); }
+    .cs-pop-hero--placeholder { cursor: default; }
+    .cs-pop-placeholder {
+      display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+      background: linear-gradient(135deg,#1b2c16,#24401f); color: rgba(255,255,255,0.45);
+    }
+    .cs-pop-placeholder i { font-size: 34px; }
+    .cs-pop-svcap { font-size: 10.5px; color: #7a8a5a; text-align: center; padding: 5px 0 0; }
+    .cs-pop-svcap i { font-size: 10px; }
+    .cs-pop-head { padding: 11px 13px 4px; }
+    .cs-pop-title { font-size: 15px; font-weight: 800; color: #1a2418; line-height: 1.2; }
+    .cs-pop-sub { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .cs-pop-cg { font-size: 12px; font-weight: 600; color: #5a6a4a; }
+    .cs-pop-type {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+    }
+    .cs-type-standard   { background: #e7f3e2; color: #2f6b2a; }
+    .cs-type-electrical { background: #fdeede; color: #b45e12; }
+    .cs-type-accessible { background: #e4edfb; color: #1f57c4; }
+    .cs-type-walkin     { background: #e0f1ee; color: #157a6a; }
+    .cs-type-group      { background: #efe7f7; color: #6b3aa0; }
+    .cs-pop-actions { padding: 8px 13px 12px; display: flex; flex-direction: column; gap: 7px; }
+    .cs-pop-reserve {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; padding: 9px; border: none; border-radius: 7px; cursor: pointer;
+      font-family: inherit; font-size: 12px; font-weight: 800; color: #fff;
+      background: linear-gradient(135deg,#7cae2f,#5f9221); transition: filter 0.15s;
+    }
+    .cs-pop-reserve:hover { filter: brightness(1.06); }
 
     /* ─── Lightbox ─── */
     #lb-overlay {
@@ -2034,10 +2122,20 @@
   const SKIP_SFX = [':wikidata', ':wikipedia', ':reviewed', ':note'];
   function fmtKey(k) { return k.replace(/[_:]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
   function shouldSkip(k) {
+    if (k.startsWith('_')) return true; // internal props (_climbs, _minz, …)
     if (SKIP_KEYS.has(k)) return true;
     if (SKIP_PFX.some(p => k.startsWith(p))) return true;
     if (SKIP_SFX.some(s => k.endsWith(s))) return true;
     return false;
+  }
+  function fmtVal(k, v) {
+    const s = String(v).replace(/_/g, ' ');
+    if (k === 'website' || k === 'url' || s.startsWith('http')) {
+      const display = s.length > 35 ? s.slice(0, 35) + '…' : s;
+      return `<a href="${v}" target="_blank" rel="noopener">${display}</a>`;
+    }
+    if (s.length < 40) return s.replace(/\b\w/g, c => c.toUpperCase());
+    return s;
   }
   function rowHTML(label, val) {
     return `<div class="popup-row"><span class="popup-label">${label}</span><span class="popup-value">${String(val).replace(/_/g,' ')}</span></div>`;
@@ -2148,36 +2246,28 @@
     return 'g-none';
   }
 
-  function buildPublicPopupHTML(props, sourceKey) {
-    const cfg = layerMeta[sourceKey] || { label: 'Feature', color: '#7f8c8d' };
-    const note = '<div class="preview-note"><i class="fa-solid fa-eye"></i> Public preview — climb lists & navigation render on the live map</div>';
-    if (cfg.popup_template && cfg.popup_template.trim()) {
-      const body = renderPopupTemplate(cfg.popup_template, buildCtx(props));
-      const style = cfg.popup_css ? `<style>${scopePopupCss(cfg.popup_css)}</style>` : '';
-      return `${style}<div class="dl-popup-custom">${body}</div>${note}`;
-    }
-    let cd = {};
-    try { const raw = props.custom_data; cd = raw ? (typeof raw === 'object' ? raw : JSON.parse(raw)) : {}; } catch {}
-    const name = props.name || cfg.label;
-    const isClimb = sourceKey === 'climbing_routes' || sourceKey === 'climbing_boulders';
-    const skip = new Set(['grade', 'route_type', 'length_ft', 'fa', 'description',
-      'area_name', 'area_id', 'area_path', 'depth', 'climb_count', 'parent_id', 'height', 'mp_id', '_draw_id']);
+  // ── Public-map parity constants/helpers (mirror docs/index.html) ──
+  const AREA_SOURCES = new Set(['climbing_areas', 'climbing_area_hulls']);
+  // Primary tag that becomes the header badge per layer family.
+  const PRIMARY_TAG_KEYS = {
+    trails:    ['highway'],
+    routes:    ['route'],
+    roads:     ['highway'],
+    natural:   ['natural'],
+    water:     ['waterway', 'water', 'natural'],
+    parks:     ['leisure', 'boundary'],
+    landuse:   ['landuse', 'amenity'],
+    buildings: ['amenity', 'building', 'shelter_type'],
+    parking:   ['parking', 'amenity'],
+    barriers:  ['barrier'],
+    pois:      ['amenity', 'tourism', 'shop', 'information', 'sport', 'historic'],
+    other:     ['amenity', 'natural', 'highway', 'landuse'],
+  };
 
-    let statsHTML = '';
-    if (isClimb) {
-      const g = props.grade || '';
-      const types = String(props.route_type || '').split('/').map(t => t.trim()).filter(Boolean);
-      const parts = [];
-      if (g) parts.push(`<span class="pcl-grade ${gradeBucketClass(g)}">${g}</span>`);
-      types.forEach(t => parts.push(`<span class="climb-type-pill">${t}</span>`));
-      statsHTML = `
-        ${parts.length ? `<div class="climb-stats">${parts.join('')}</div>` : ''}
-        ${props.fa ? `<div class="climb-fa"><i class="fa-solid fa-flag-checkered"></i> FA ${props.fa}</div>` : ''}
-        ${cd.description ? `<div class="climb-desc">${cd.description}</div>` : ''}`;
-    } else if (sourceKey === 'climbing_areas' && cd.description) {
-      statsHTML = `<div class="climb-desc">${cd.description}</div>`;
-    }
-
+  // Photo gallery strip (thumbs + count), shared by the generic and custom-template
+  // popup paths. Returns '' when the feature has no photos. The lightbox binding in
+  // registerInteractions attaches to .popup-photo-thumb regardless of which path emitted it.
+  function buildPhotoGalleryHTML(props) {
     let photos = props.photos;
     if (typeof photos === 'string') { try { photos = JSON.parse(photos); } catch { photos = []; } }
     if (!Array.isArray(photos)) photos = [];
@@ -2187,25 +2277,204 @@
     const lbData = photoMeta.length
       ? photoMeta.map(m => ({ url: m.url || '', caption: m.caption || '' }))
       : photos.map(u => ({ url: u, caption: '' }));
+    if (!lbData.length) return '';
     const escU = u => u.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    const photosHTML = lbData.length
-      ? `<div class="popup-photos" data-photos="${escU(JSON.stringify(lbData))}">${
-          lbData.slice(0, 12).map((m, i) =>
-            `<img class="popup-photo-thumb" src="${escU(m.url)}" data-idx="${i}" loading="lazy" alt="" />`
-          ).join('')
-        }</div><div class="popup-photo-count">${lbData.length} photo${lbData.length === 1 ? '' : 's'}</div>`
-      : '';
+    return `<div class="popup-photos" data-photos="${escU(JSON.stringify(lbData))}">${
+        lbData.slice(0, 12).map((m, i) =>
+          `<img class="popup-photo-thumb" src="${escU(m.url)}" data-idx="${i}" loading="lazy" alt="" />`
+        ).join('')
+      }</div><div class="popup-photo-count">${lbData.length} photo${lbData.length === 1 ? '' : 's'}</div>`;
+  }
 
-    const isClimbing = isClimb || sourceKey === 'climbing_areas';
-    const rows = (cfg.fields || [])
-      .filter(f => !f.hidden && !(isClimbing && skip.has(f.name)))
-      .map(f => [f.label, f.base ? props[f.name] : cd[f.name]])
-      .filter(([, v]) => v != null && String(v).trim() !== '')
-      .map(([label, v]) => rowHTML(label, v))
+  // ── Campsite popup (mirror docs/index.html) ──
+  const STREETVIEW_EMBED_KEY = 'AIzaSyD7ogMBpHRomETaw_BypsdbB40HQ4CM220';
+  const STREETVIEW_SOURCES = new Set(['campsite_sites']);
+  // Plain Street View photo (Street View Static API) — billed per request, so it
+  // only loads when a campsite popup opens. scale=2 keeps it crisp on retina.
+  function streetViewStaticURL(lng, lat, heading, w, h) {
+    let url = 'https://maps.googleapis.com/maps/api/streetview'
+      + `?size=${w}x${h}&scale=2&fov=90&pitch=0`
+      + `&location=${lat},${lng}`
+      + `&key=${encodeURIComponent(STREETVIEW_EMBED_KEY)}`;
+    if (heading != null && heading !== '') url += `&heading=${heading}`;
+    return url;
+  }
+  const CAMPGROUND_LABEL = { northern_lights: 'Northern Lights', quartzite: 'Quartzite' };
+  const SITE_TYPE_META = {
+    standard:    { label: 'Standard',   icon: 'fa-tent',          cls: 'standard' },
+    electrical:  { label: 'Electric',   icon: 'fa-plug',          cls: 'electrical' },
+    handicapped: { label: 'Accessible', icon: 'fa-wheelchair',    cls: 'accessible' },
+    walk_in:     { label: 'Walk-in',    icon: 'fa-person-hiking', cls: 'walkin' },
+    group:       { label: 'Group',      icon: 'fa-people-group',  cls: 'group' },
+  };
+  function prettifyCampground(v) {
+    if (!v) return '';
+    return CAMPGROUND_LABEL[v] || String(v).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  const CAMPSITE_RESERVATION = {
+    quartzite:       { txId: '-2147483634', resId: '-2147483634', mapId: '-2147483636' },
+    northern_lights: { txId: '-2147483634', resId: '-2147483634', mapId: '-2147483635' },
+  };
+  function buildCampsitePopupHTML(props) {
+    const name = props.name || (props.ref ? `Site ${props.ref}` : 'Campsite');
+    const cg = prettifyCampground(props.campground);
+    const t = SITE_TYPE_META[props.site_type];
+    const phIcon = t ? t.icon : 'fa-tent';
+    const hasSV = STREETVIEW_EMBED_KEY && props.sv_lng != null && props.sv_lat != null
+      && props.sv_status === 'ok';
+    const hero = hasSV
+      ? `<div class="cs-pop-hero" role="button" tabindex="0" aria-label="Open Street View">
+          <img src="${escapeHtml(streetViewStaticURL(props.sv_lng, props.sv_lat, props.sv_heading, 600, 320))}" alt="Street View of ${escapeHtml(name)}" loading="lazy" />
+          <span class="cs-pop-expand"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></span>
+        </div>`
+      : `<div class="cs-pop-hero cs-pop-hero--placeholder"><div class="cs-pop-placeholder"><i class="fa-solid ${phIcon}"></i></div></div>`;
+    const sub = [
+      cg ? `<span class="cs-pop-cg">${escapeHtml(cg)}</span>` : '',
+      t ? `<span class="cs-pop-type cs-type-${t.cls}"><i class="fa-solid ${t.icon}"></i> ${t.label}</span>` : '',
+    ].filter(Boolean).join('');
+    return `<div class="dl-popup-custom"><div class="cs-pop">
+      ${hero}
+      ${hasSV ? `<div class="cs-pop-svcap"><i class="fa-solid fa-street-view"></i> Click for Street View</div>` : ''}
+      <div class="cs-pop-head">
+        <div class="cs-pop-title">${escapeHtml(name)}</div>
+        ${sub ? `<div class="cs-pop-sub">${sub}</div>` : ''}
+      </div>
+      <div class="cs-pop-actions">
+        ${CAMPSITE_RESERVATION[props.campground]
+          ? `<button class="cs-pop-reserve" data-cg="${escapeHtml(props.campground)}"><i class="fa-solid fa-calendar-check"></i> Reserve</button>`
+          : ''}
+        <button class="popup-directions-btn"><i class="fa-solid fa-route"></i> Directions</button>
+      </div>
+    </div></div>`;
+  }
+
+  function buildPublicPopupHTML(props, sourceKey) {
+    const cfg = layerMeta[sourceKey] || { label: 'Feature', color: '#7f8c8d' };
+    const note = '<div class="preview-note"><i class="fa-solid fa-eye"></i> Public preview — buttons &amp; climb navigation are interactive on the live map</div>';
+
+    // Custom template: render template + inject photo gallery at <!--DL_PHOTOS-->
+    // (or append it), exactly as the public map does. No action buttons here.
+    if (cfg.popup_template && cfg.popup_template.trim()) {
+      let body = renderPopupTemplate(cfg.popup_template, buildCtx(props));
+      const gallery = buildPhotoGalleryHTML(props);
+      body = body.includes('<!--DL_PHOTOS-->')
+        ? body.replace('<!--DL_PHOTOS-->', gallery)
+        : body + gallery;
+      const style = cfg.popup_css ? `<style>${scopePopupCss(cfg.popup_css)}</style>` : '';
+      return `${style}<div class="dl-popup-custom">${body}</div>${note}`;
+    }
+
+    // Campsites get the purpose-built Street View card.
+    if (sourceKey === 'campsite_sites') return buildCampsitePopupHTML(props) + note;
+
+    const name = props.name || null;
+    const tagKeys = PRIMARY_TAG_KEYS[sourceKey] || [];
+    let badgeKey = null, badgeVal = null;
+    for (const k of tagKeys) { if (props[k]) { badgeKey = k; badgeVal = props[k]; break; } }
+    let badgeText = badgeVal
+      ? String(badgeVal).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : cfg.label;
+    let badgeColor = cfg.color;
+    // Areas read as their climb type, matching their marker family.
+    if (sourceKey === 'climbing_areas') {
+      const boulderArea = (props._boulders || 0) > (props._routes || 0);
+      badgeText = boulderArea ? 'Boulder Area' : 'Route Area';
+      badgeColor = boulderArea ? '#e67e22' : '#e74c3c';
+    }
+    const title = name || badgeText;
+    const skipInRows = new Set([...SKIP_KEYS, badgeKey].filter(Boolean));
+    let customData = {};
+    try { const raw = props.custom_data; customData = raw ? (typeof raw === 'object' ? raw : JSON.parse(raw)) : {}; } catch {}
+
+    // Climbing sources get purpose-built styling (grade chip, type pills, stats,
+    // description); the keys rendered here are suppressed from the row sections.
+    const isClimb = sourceKey === 'climbing_routes' || sourceKey === 'climbing_boulders';
+    const isAreaSrc = AREA_SOURCES.has(sourceKey);
+    let climbStatsHTML = '';
+    if (isClimb) {
+      const g = props.grade || '';
+      const types = String(props.route_type || '').split('/').map(t => t.trim()).filter(Boolean);
+      const parts = [];
+      if (g) parts.push(`<span class="pcl-grade ${gradeBucketClass(g)}">${escapeHtml(g)}</span>`);
+      types.forEach(t => parts.push(`<span class="climb-type-pill">${escapeHtml(t)}</span>`));
+      climbStatsHTML = `
+        ${parts.length ? `<div class="climb-stats">${parts.join('')}</div>` : ''}
+        ${props.fa ? `<div class="climb-fa"><i class="fa-solid fa-flag-checkered"></i> FA ${escapeHtml(String(props.fa))}</div>` : ''}
+        ${customData.description ? `<div class="climb-desc">${escapeHtml(String(customData.description))}</div>` : ''}`;
+      ['grade', 'route_type', 'length_ft', 'fa', 'description', 'area_name', 'area_id', 'area_path', 'depth', 'height', 'mp_id']
+        .forEach(k => skipInRows.add(k));
+    } else if (isAreaSrc) {
+      ['climb_count', 'depth', 'area_id', 'parent_id', 'area_path', 'description', 'height', 'mp_id'].forEach(k => skipInRows.add(k));
+      if (customData.description) {
+        climbStatsHTML = `<div class="climb-desc">${escapeHtml(String(customData.description))}</div>`;
+      }
+    }
+
+    // Configured fields: render using field_schema labels if defined, else fall
+    // back to custom_description. (Editor stores field_schema under cfg.fields.)
+    const fieldSchema = cfg.fields || [];
+    let customHTML = '';
+    if (fieldSchema.length) {
+      const fieldRows = fieldSchema
+        .filter(f => !f.hidden && !skipInRows.has(f.name))
+        .map(f => {
+          // base fields live on top-level props; custom fields in custom_data
+          const val = f.base ? props[f.name] : (customData[f.name] != null ? customData[f.name] : props[f.name]);
+          if (val == null || String(val).trim() === '') return '';
+          skipInRows.add(f.name);  // don't also show in raw rows section
+          return `<div class="popup-row"><span class="popup-label">${f.label}</span><span class="popup-value">${val}</span></div>`;
+        })
+        .filter(Boolean)
+        .join('');
+      if (fieldRows) customHTML = `<div style="border-bottom:1px solid #eee;margin-bottom:4px">${fieldRows}</div>`;
+    } else if (customData.custom_description) {
+      customHTML = `<div class="popup-custom-desc">
+        <div class="popup-custom-desc-label">Description</div>
+        <div class="popup-custom-desc-text">${customData.custom_description}</div>
+      </div>`;
+    }
+
+    const rows = Object.entries(props)
+      .filter(([k, v]) => !skipInRows.has(k) && !shouldSkip(k) && v != null && String(v).trim() !== '')
+      .slice(0, 9)
+      .map(([k, v]) => `<div class="popup-row"><span class="popup-label">${fmtKey(k)}</span><span class="popup-value">${fmtVal(k, v)}</span></div>`)
       .join('');
 
-    return `<div class="popup-header"><div class="popup-feature-name">${name}</div><span class="popup-badge" style="background:${cfg.color}">${cfg.label}</span></div>
-      <div class="popup-body">${statsHTML}${photosHTML}${rows || (!statsHTML && !photosHTML ? '<div class="popup-empty">No attributes</div>' : '')}${note}</div>`;
+    const photosHTML = buildPhotoGalleryHTML(props);
+    const extLinksHTML = sourceKey.startsWith('climbing_') && (customData.openbeta_id || customData.mp_id)
+      ? `<div class="popup-ext-links">
+          ${customData.openbeta_id ? `<a href="${isAreaSrc
+              ? 'https://openbeta.io/areas/' + customData.openbeta_id
+              : 'https://openbeta.io/climbs/' + customData.openbeta_id
+            }" target="_blank" rel="noopener" class="popup-ob-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> OpenBeta</a>` : ''}
+          ${customData.mp_id ? `<a href="https://www.mountainproject.com/${isAreaSrc ? 'area' : 'route'}/${escapeHtml(String(customData.mp_id))}"
+            target="_blank" rel="noopener" class="popup-ob-link popup-mp-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Mountain Project</a>` : ''}
+        </div>`
+      : '';
+
+    return `
+      <div class="popup-header">
+        <div class="popup-feature-name">${title}</div>
+        <span class="popup-badge" style="background:${badgeColor}">${badgeText}</span>
+      </div>
+      <div class="popup-body">
+        ${climbStatsHTML}
+        ${photosHTML}
+        ${customHTML}
+        ${rows || (!customHTML && !photosHTML && !climbStatsHTML ? '<div class="popup-empty">No additional attributes</div>' : '')}
+        ${extLinksHTML}
+        <button class="popup-directions-btn"><i class="fa-solid fa-route"></i> Directions</button>
+        ${STREETVIEW_EMBED_KEY && STREETVIEW_SOURCES.has(sourceKey)
+          ? `<button class="popup-streetview-btn" type="button"><i class="fa-solid fa-street-view"></i> Street View</button>`
+          : ''}
+        <button class="popup-submit-btn"
+          data-source="${escapeHtml(sourceKey)}"
+          data-key="${escapeHtml(props._draw_id || props.area_id || '')}"
+          data-name="${escapeHtml(title || '')}">
+          &#128247; Submit a photo
+        </button>
+        ${note}
+      </div>`;
   }
 
   function registerInteractions() {
@@ -2232,7 +2501,7 @@
           const feature = e.features[0];
           const sourceKey = layerToSource[lid];
           const preview = document.getElementById('popup-preview-toggle').checked;
-          const popup = new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: preview ? '290px' : '270px' })
+          const popup = new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: preview ? '320px' : '270px' })
             .setLngLat(e.lngLat)
             .setHTML((preview ? buildPublicPopupHTML : buildPopupHTML)(feature.properties, sourceKey))
             .addTo(map);
