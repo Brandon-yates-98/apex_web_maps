@@ -3359,7 +3359,7 @@
       return `${style}<div class="dl-popup-custom">${body}</div>`;
     }
     if (sourceKey === 'campsite_sites') return buildCampsitePopupHTML(props);
-    if (sourceKey === 'sauk_trails') return buildSaukTrailPopupHTML(props);
+    if (sourceKey.startsWith('sauk_trail')) return buildSaukTrailPopupHTML(props);
     const name = props.name || null;
     const tagKeys = PRIMARY_TAG_KEYS[sourceKey] || [];
     let badgeKey = null, badgeVal = null;
@@ -3826,19 +3826,25 @@
       map.addLayer(caseSpec, firstSymbol);
       map.addLayer(lineSpec, firstSymbol);
       mapboxIds.push(key+'-case', key+'-line');
-    } else if (key === 'sauk_trails') {
-      // County trails colored by type (properties.trail_type), over a soft white
-      // casing for legibility. Colors mirror SAUK_TRAIL_TYPES (also used by the popup).
+    } else if (key.startsWith('sauk_trail')) {
+      // County trails, split into per-type layers (each carries its own color via
+      // default_style). Drawn over a soft white casing for legibility. A shared
+      // amber highlight halo (trail_hl) sits beneath all trail layers and is set on
+      // click by highlightTrail().
+      if (!map.getSource('trail_hl')) {
+        map.addSource('trail_hl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({ id: 'trail_hl-line', type: 'line', source: 'trail_hl',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#ffd54f', 'line-blur': 3, 'line-opacity': 0.85,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 7, 16, 15] } });
+      }
       map.addSource(key, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      const SAUK_COLOR = ['match', ['get', 'trail_type'],
-        ...Object.entries(SAUK_TRAIL_TYPES).flatMap(([t, m]) => [t, m.color]),
-        SAUK_TRAIL_DEFAULT.color];
       const caseSpec = { id: key+'-case', type: 'line', source: key,
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 16, 6], 'line-opacity': 0.5 } };
       const lineSpec = { id: key+'-line', type: 'line', source: key,
         layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': SAUK_COLOR,
+        paint: { 'line-color': color,
           'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.3, 16, 3.6], 'line-opacity': 0.95 } };
       if (filter) { caseSpec.filter = filter; lineSpec.filter = filter; }
       map.addLayer(caseSpec);
@@ -4741,12 +4747,28 @@
   // and by in-popup navigation (area climb lists, prev/next stepping), which
   // chain popups with a flyTo between them. On mobile it renders as a bottom
   // sheet (same content + wiring) instead of an anchored popup.
+  // Selected-trail highlight: a shared amber halo (trail_hl source) set to the
+  // clicked trail's geometry, cleared when the popup closes or another opens.
+  function highlightTrail(feature) {
+    const s = map.getSource('trail_hl');
+    if (s) s.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: feature.geometry, properties: {} }] });
+  }
+  function clearTrailHighlight() {
+    const s = map.getSource('trail_hl');
+    if (s) s.setData({ type: 'FeatureCollection', features: [] });
+  }
+
   function openFeaturePopup(feature, sourceKey, lngLat) {
+    clearTrailHighlight();
     const html = buildPopupHTML(feature.properties, sourceKey);
     const surface = isMobile()
       ? openFeatureSheet(html)
       : new mapboxgl.Popup({ offset: 10, closeButton: true, maxWidth: '336px' })
           .setLngLat(lngLat).setHTML(html).addTo(map);
+    if (sourceKey.startsWith('sauk_trail')) {
+      highlightTrail(feature);
+      if (typeof surface.on === 'function') surface.on('close', clearTrailHighlight);
+    }
     let sortMode = 'alpha';   // survives grade-pill rebuilds
 
     // The popup body re-renders when a grade pill changes the shared filter
