@@ -8,7 +8,7 @@ This is an **independent community project, maintained by a single developer** a
 
 - 📱 Installable on iPhone/Android via *Add to Home Screen*
 - 🛰️ Works offline at the trailhead — trails, climbs, POIs, photos, and filters all cached on-device
-- 🧗 Climbing data (routes, boulders, areas) from OpenBeta; trails and POIs from OpenStreetMap
+- 🧗 Climbing from OpenBeta; trails & POIs from OpenStreetMap; county trails from Sauk County GIS; campsite info & live availability from Campflare
 - 🧭 Directions hand off to the device's native maps app
 
 ## What this project is for
@@ -31,7 +31,7 @@ Operator model and what counts as noncommercial: [`licensing/PERMITTED-USES.md`]
 
 ### Independence
 
-This is an independent project and is **not affiliated with, operated by, or the responsibility of** onX or the Wisconsin DNR. The map uses only OpenStreetMap, OpenBeta, and original survey data — **no onX data**.
+This is an independent project and is **not affiliated with, operated by, or the responsibility of** onX or the Wisconsin DNR. Its data comes from OpenStreetMap, OpenBeta, Sauk County GIS, Campflare, Google (Street View & place info), and the project's own survey work — and contains **no onX data**.
 
 ## License — please read before reusing
 
@@ -49,12 +49,19 @@ If you're unsure whether your use qualifies as noncommercial, open an issue or g
 
 ### Data attribution (your obligations, not ours to waive)
 
-The map *software* is ours; the *data* is not:
+The map *software* is ours; the *data* is not. Full list and terms: [`licensing/ATTRIBUTION.md`](licensing/ATTRIBUTION.md).
 
+**Open data (attribute + comply if you reuse):**
 - Climbing data © [OpenBeta](https://openbeta.io) contributors, licensed [ODbL](https://opendatacommons.org/licenses/odbl/)
 - Trail/POI data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, licensed ODbL
+- Sauk County trails © [Sauk County GIS](https://www.co.sauk.wi.us)
+- Offline basemap tiles © [OpenTopoMap](https://opentopomap.org) (CC-BY-SA) + OpenStreetMap contributors
 
-If you build on this, you must keep equivalent attribution and comply with ODbL yourself. The license above cannot and does not restrict the underlying open data.
+**Third-party services (shown under their own terms — not redistributable from here; you'd need your own access):**
+- Campsite amenities & live availability via [Campflare](https://campflare.com)
+- Street View imagery & place info (ratings/photos) via Google
+
+If you build on this, keep equivalent attribution and comply with each source's license yourself. The license above cannot and does not restrict the underlying open data.
 
 ## Repository layout
 
@@ -66,10 +73,12 @@ docs/                    ← the deployed site (GitHub Pages serves this folder)
   icons/                 ← app icons (regenerate with make_icons.py)
 editor.html              ← admin editor (auth-gated; deliberately NOT deployed)
 migrations/              ← Supabase SQL migrations, in order
-licensing/               ← draft noncommercial license + per-layer terms (pending review)
+supabase/functions/      ← edge functions (e.g. campflare-availability — live availability)
+licensing/               ← PolyForm Noncommercial license + per-layer terms (counsel-gated)
 supabase_setup.sql       ← initial schema
 supabase_lockdown.sql    ← pre-deployment security hardening — run before going live
-fetch_*.py, import_*.py  ← data pipeline (OSM, OpenBeta, campsites)
+fetch_*.py, import_*.py  ← root data pipeline (OSM, OpenBeta, campsites)
+scripts/                 ← scheduled import/enrichment jobs (Sauk County trails, Campflare, Google Places, Street View)
 compute_drive_times.py   ← one-time drive-time precompute (Mapbox Directions API)
 ```
 
