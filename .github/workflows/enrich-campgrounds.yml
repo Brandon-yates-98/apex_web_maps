@@ -65,3 +65,12 @@ jobs:
           CAMPFLARE_API_KEY: ${{ secrets.CAMPFLARE_API_KEY }}
         run: |
           python scripts/enrich_campsites_campflare.py ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+      # Sauk County public trails (ArcGIS) imported as the sauk_trails vector layer.
+      # Full refresh each run; --dry-run fetches + previews without writing.
+      - name: Import Sauk County trails
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}            # service_role key
+        run: |
+          python scripts/import_sauk_trails.py ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
