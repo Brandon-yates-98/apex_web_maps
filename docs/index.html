@@ -416,16 +416,25 @@
     .fb-list.open { display: flex; }
     #exp-filters .cf-search-wrap { display: none; }   /* climbing uses the unified search */
     #exp-filters #climbing-filter-panel { padding: 0; border: none; margin: 0; }
-    /* Climbing tab: two columns (search+area | chips+sliders), like campgrounds */
+    /* Climbing tab: two columns sized to match the campgrounds module footprint
+       (left = search + area like the campground search; right = sliders + chips) */
     .cf-cols { display: flex; gap: 16px; align-items: flex-start; }
-    .cf-col { flex: 1 1 210px; min-width: 200px; display: flex; flex-direction: column; }
+    .cf-col { display: flex; flex-direction: column; }
+    .cf-cols .cf-col:first-child { flex: 0 1 280px; min-width: 220px; }   /* mirrors .exp-search-wrap width */
+    .cf-cols .cf-col:last-child { flex: 1 1 240px; min-width: 220px; }
     .cf-cols .cf-col > :first-child { margin-top: 0; }
     .cf-cols .cf-label { margin-top: 9px; margin-bottom: 0; }
     .cf-cols .cf-vrange { margin-top: 0; }
     .cf-cols #cf-result-count { margin-top: 8px; }
+    /* Two grade sliders side by side */
+    .cf-grades { display: flex; gap: 12px; align-items: flex-start; }
+    .cf-grade { flex: 1 1 0; min-width: 0; }
+    .cf-grades .cf-label { margin-top: 0; }
+    .cf-grade .cf-vrange { margin-left: 0; margin-right: 0; }
+    .cf-cols #cf-types { margin-top: 10px; }
     @media (max-width: 600px) {
       .cf-cols { flex-direction: column; gap: 4px; }
-      .cf-col { min-width: 0; flex: 1 1 auto; }
+      .cf-col, .cf-cols .cf-col:first-child, .cf-cols .cf-col:last-child { min-width: 0; flex: 1 1 auto; }
     }
 
     /* ── Climbing filter panel ── */
@@ -4903,19 +4912,23 @@
           if (lbl && lbl.classList.contains('cf-label')) lbl.remove();
           left.appendChild(area);
         }
-        const moveWithLabel = (el, col) => {
-          if (!el) return;
-          const prev = el.previousElementSibling;
-          if (prev && prev.classList.contains('cf-label')) col.appendChild(prev);
-          col.appendChild(el);
-        };
+        // Grade sliders side by side (each keeps its small header above it).
+        const grades = document.createElement('div'); grades.className = 'cf-grades';
+        cp.querySelectorAll('.cf-vrange').forEach(vr => {
+          const grp = document.createElement('div'); grp.className = 'cf-grade';
+          const lbl = vr.previousElementSibling;
+          if (lbl && lbl.classList.contains('cf-label')) grp.appendChild(lbl);
+          grp.appendChild(vr);
+          grades.appendChild(grp);
+        });
+        right.appendChild(grades);
+        // Type chips under the sliders (header dropped).
         const types = cp.querySelector('#cf-types');
         if (types) {
-          const tlbl = types.previousElementSibling;   // drop the "Type" header
+          const tlbl = types.previousElementSibling;
           if (tlbl && tlbl.classList.contains('cf-label')) tlbl.remove();
           right.appendChild(types);
         }
-        cp.querySelectorAll('.cf-vrange').forEach(vr => moveWithLabel(vr, right));  // both grade sliders
         const rc = cp.querySelector('#cf-result-count'); if (rc) right.appendChild(rc);
         const rst = cp.querySelector('#cf-reset'); if (rst) right.appendChild(rst);
         cp.appendChild(cols);
