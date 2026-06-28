@@ -444,9 +444,11 @@
     #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grade {
       display: flex; flex-direction: column; justify-content: space-between;
       min-height: var(--cf-grade-h, 35px); }   /* --cf-grade-h = measured search-bar height */
-    /* The thumb (circle) is centered in the track box and sits ~2px above the box
-       bottom; nudge the slider down so the circle's bottom meets the search bar. */
-    #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grade .cf-vrange { margin-top: 0; margin-bottom: 0; transform: translateY(2px); }
+    /* Position the slider so the thumb (circle) bottom meets the search bar. */
+    #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grade .cf-vrange { margin-top: 0; margin-bottom: 0; transform: translateY(-2px); }
+    /* Climbing filters are short — don't scroll (the slider transform was adding
+       scrollable overflow). */
+    #exp-bar[data-filter-tab="climbing"] #exp-filters .fb-body { overflow: visible; }
     @media (max-width: 600px) {
       #fb-search-host { flex: 1 1 100%; order: 1; }
       #exp-filters .fb-body { width: auto; }
