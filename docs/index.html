@@ -352,49 +352,32 @@
     .loop-mi { font-variant-numeric: tabular-nums; font-weight: 700; color: #cfe39a; font-size: 10.5px; flex-shrink: 0; }
     .loop-empty { font-size: 11px; color: rgba(255,255,255,0.4); padding: 6px; }
 
-    /* ── Floating Filters panel (Climbing / Trails) with bottom-edge tabs ── */
-    #filters-bar {
-      position: absolute; z-index: 44; left: 0; right: 0; margin: 0 auto;
-      top: calc(12px + env(safe-area-inset-top, 0px));
-      width: fit-content; max-width: calc(100% - 24px);
-      display: flex; flex-direction: column; align-items: center;
-      font-family: 'Inter', sans-serif; pointer-events: none;
-    }
-    body.has-exp-bar #filters-bar { top: calc(var(--exp-bar-h, 56px) + 26px + env(safe-area-inset-top, 0px)); }
-    .fb-panel {
-      pointer-events: auto; width: 300px; max-width: 100%;
-      background: rgba(14,22,12,0.92); backdrop-filter: blur(6px);
-      border: 1px solid rgba(155,194,60,0.35); border-radius: 12px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.4); padding: 12px 14px;
-    }
-    .fb-body { max-height: min(62vh, 460px); overflow-y: auto; }
+    /* ── Filter tabs inside the experience bar (Camping / Climbing / Trails) ── */
+    #exp-filters .fb-body { max-height: min(58vh, 440px); overflow-y: auto; min-width: 230px; }
     .fb-pane { display: none; }
     .fb-pane.active { display: block; }
     /* Relocated modules render normally inside a pane regardless of their old
        sidebar visibility class */
-    .fb-body #climbing-filter-panel { display: block !important; }
-    .fb-body .loop-browser,
-    .fb-body .poi-filters { display: flex !important; padding: 0; }
+    #exp-filters #climbing-filter-panel { display: block !important; }
+    #exp-filters .loop-browser,
+    #exp-filters .poi-filters { display: flex !important; padding: 0; }
     .fb-pane-title { font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
       color: rgba(255,255,255,0.5); text-transform: uppercase; margin: 10px 0 5px; }
     .fb-pane-title:first-child { margin-top: 0; }
-    .fb-tabs { pointer-events: auto; display: flex; gap: 6px; margin-top: -1px; }
+    /* Tabs protrude from the bottom edge of the experience bar */
+    .fb-tabs { display: flex; justify-content: center; gap: 6px; margin-top: -1px; }
     .fb-tab {
       display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
       font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; padding: 6px 16px;
-      background: rgba(14,22,12,0.78); color: rgba(255,255,255,0.5);
+      background: rgba(14,22,12,0.82); color: rgba(255,255,255,0.5);
       border: 1px solid rgba(155,194,60,0.35); border-top: none;
       border-radius: 0 0 11px 11px; box-shadow: 0 5px 12px rgba(0,0,0,0.3); transition: all 0.15s;
     }
     .fb-tab i { font-size: 10px; }
     .fb-tab:hover { color: rgba(255,255,255,0.85); }
     .fb-tab.active { background: rgba(14,22,12,0.92); color: #9bc23c; }
-    /* Trail attribute filter chips reuse the climbing .cf-chip look */
     .ft-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
-    @media (max-width: 600px) {
-      #filters-bar { max-width: calc(100% - 16px); }
-      .fb-panel { width: calc(100vw - 28px); }
-    }
+    #exp-bar.collapsed .fb-tabs { display: none !important; }
 
     /* ── Climbing filter panel ── */
     #climbing-filter-panel { display: none; }
@@ -1663,14 +1646,9 @@
           <i class="fa-solid fa-chevron-up exp-c-caret"></i>
         </button>
       </div>
+      <div id="fb-tabs" class="fb-tabs"></div>
       <ul id="exp-suggestions" class="exp-autocomplete" role="listbox"></ul>
       <div id="exp-list" class="exp-list"></div>
-    </div>
-
-    <!-- Filters panel (Climbing / Trails): floats over the map, tabs protrude from the bottom edge -->
-    <div id="filters-bar" style="display:none">
-      <div class="fb-panel"><div id="fb-body" class="fb-body"></div></div>
-      <div id="fb-tabs" class="fb-tabs"></div>
     </div>
   </div>
 
@@ -2979,20 +2957,29 @@
     const exp = experienceConfig && experienceConfig.experience;
     const pl = exp && exp.primary_layer;
     expPrimaryLayer = (pl && layerCache[pl] && layerCache[pl].features && layerCache[pl].features.length) ? pl : null;
-    if (!expPrimaryLayer) { bar.style.display = 'none'; document.body.classList.remove('has-exp-bar'); return; }
+    // The bar now also hosts the Camping/Climbing/Trails filter tabs, so show it
+    // whenever either a primary layer (campsite search) or any filter tab exists.
+    const hasFilters = !!bar.querySelector('#exp-filters .fb-pane');
+    const mainEl = bar.querySelector('.exp-bar-main');
+    if (!expPrimaryLayer && !hasFilters) { bar.style.display = 'none'; document.body.classList.remove('has-exp-bar'); return; }
     bar.style.display = '';
     document.body.classList.add('has-exp-bar');
-    const meta = layerMeta[expPrimaryLayer];
-    const label = (meta && meta.label) ? meta.label.toLowerCase() : 'features';
-    const input = document.getElementById('exp-search');
-    if (input) input.placeholder = `Search ${label}…`;
-    setupExperienceBar();
-    // Show the DNR availability button only when campsites are present and at
-    // least one Campflare campground id is configured.
-    const availBar = document.getElementById('avail-bar');
-    if (availBar) availBar.style.display =
-      (layerCache[CAMPSITE_SOURCE] && Object.values(CAMPFLARE_CAMPGROUNDS).some(Boolean)) ? '' : 'none';
-    refreshExpList();
+    if (expPrimaryLayer) {
+      if (mainEl) mainEl.style.display = '';
+      const meta = layerMeta[expPrimaryLayer];
+      const label = (meta && meta.label) ? meta.label.toLowerCase() : 'features';
+      const input = document.getElementById('exp-search');
+      if (input) input.placeholder = `Search ${label}…`;
+      setupExperienceBar();
+      // Show the DNR availability button only when campsites are present and at
+      // least one Campflare campground id is configured.
+      const availBar = document.getElementById('avail-bar');
+      if (availBar) availBar.style.display =
+        (layerCache[CAMPSITE_SOURCE] && Object.values(CAMPFLARE_CAMPGROUNDS).some(Boolean)) ? '' : 'none';
+      refreshExpList();
+    } else if (mainEl) {
+      mainEl.style.display = 'none';   // no campsite search/list on the main map
+    }
     requestAnimationFrame(syncBarHeight);
   }
 
@@ -4600,48 +4587,11 @@
       listEl.appendChild(groupEl);
     });
 
-    // Campsite filters live in their own section at the TOP of the sidebar
-    // (#camp-filter-section, outside the Layers list), shown only when the
-    // campsites layer is present. Rebuilt with the list so #ff-presets is
-    // recreated fresh each time and the init passes that run afterward find it.
-    // Where the price slider + presets live: in the top-of-map experience bar
-    // when the experience sets a primary_layer, else the sidebar section
-    // (fallback). Built in exactly one place so #df-price / #ff-presets are unique.
+    // Camping / Climbing / Trails filters are consolidated into the experience bar
+    // as tabs (buildFiltersBar). The old sidebar camp section is no longer used.
     const campSection = document.getElementById('camp-filter-section');
-    const campBody = document.getElementById('camp-filter-body');
-    const expFiltersEl = document.getElementById('exp-filters');
-    const primaryLayer = (experienceConfig.experience && experienceConfig.experience.primary_layer) || null;
-    if (campBody) campBody.innerHTML = '';
-    if (expFiltersEl) expFiltersEl.innerHTML = '';
-    if (primaryLayer && expFiltersEl) {
-      expFiltersEl.appendChild(buildCampingFilters());           // top-of-map bar hosts the filters
-      if (campSection) campSection.style.display = 'none';
-    } else if (campSection && campBody && layers.some(l => l.source_key === CAMPING_SOURCE)) {
-      campBody.appendChild(buildCampingFilters());               // sidebar fallback
-      campSection.style.display = '';
-    } else if (campSection) {
-      campSection.style.display = 'none';
-    }
-
-    // Consolidate the Climbing + Trails filters into the floating top-of-map panel.
+    if (campSection) campSection.style.display = 'none';
     buildFiltersBar(layers);
-
-    // The max-price slider + the predefined filter presets (populated later by
-    // initFeatureFilters into #ff-presets; configured by initCampFilter).
-    function buildCampingFilters() {
-      const box = document.createElement('div');
-      box.className = 'camp-filters';
-      box.innerHTML = `
-        <div class="camp-price-filter">
-          <div class="df-row">
-            <div class="df-label"><span><i class="fa-solid fa-dollar-sign"></i> Max Price (per night)</span><span id="df-price-val" class="df-val">Any</span></div>
-            <input type="range" id="df-price" class="df-slider" min="0" max="100" step="5" value="100" />
-          </div>
-          <div id="df-result-count" class="cf-result-count"></div>
-        </div>
-        <div id="ff-presets" class="ff-presets"></div>`;
-      return box;
-    }
 
     // Build one sidebar row (or the climbing-areas split) into `container`.
     function renderLayerRow(layerCfg, container) {
@@ -4761,47 +4711,67 @@
     }
   }
 
-  // ── Floating Filters panel: Climbing + Trails tabs ───────────────
-  // Relocates the already-built climbing panel + loop browser + POI chips into
-  // tab panes (same trick the sidebar used), and adds trail type toggles +
-  // skill/surface attribute filters. Called at the end of buildLayersFromConfig.
+  // ── Experience-bar filter tabs: Camping / Climbing / Trails ───────
+  // Builds the tabbed filter panes inside #exp-filters (and the bottom-edge tab
+  // strip in #fb-tabs), relocating the already-wired climbing panel + loop browser
+  // + POI chips, and adding trail type toggles + skill/surface attribute filters.
   const trailAttr = { skill: new Set(), surface: new Set() };
 
+  // The campground max-price slider + saved-filter presets (populated later by
+  // initFeatureFilters into #ff-presets; configured by initCampFilter).
+  function buildCampingFilters() {
+    const box = document.createElement('div');
+    box.className = 'camp-filters';
+    box.innerHTML = `
+      <div class="camp-price-filter">
+        <div class="df-row">
+          <div class="df-label"><span><i class="fa-solid fa-dollar-sign"></i> Max Price (per night)</span><span id="df-price-val" class="df-val">Any</span></div>
+          <input type="range" id="df-price" class="df-slider" min="0" max="100" step="5" value="100" />
+        </div>
+        <div id="df-result-count" class="cf-result-count"></div>
+      </div>
+      <div id="ff-presets" class="ff-presets"></div>`;
+    return box;
+  }
+
   function buildFiltersBar(layers) {
-    const bar = document.getElementById('filters-bar');
-    const body = document.getElementById('fb-body');
+    const host = document.getElementById('exp-filters');
     const tabsEl = document.getElementById('fb-tabs');
-    if (!bar || !body || !tabsEl) return;
-    body.innerHTML = '';
+    if (!host || !tabsEl) return;
+    host.innerHTML = '';
     tabsEl.innerHTML = '';
+    const body = document.createElement('div');
+    body.className = 'fb-body';
+    host.appendChild(body);
 
-    const hasClimb = layers.some(l => CLIMB_SOURCES.includes(l.source_key));
-    const hasTrails = layers.some(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops');
+    const has = key => layers.some(l => l.source_key === key);
     const panes = [];
-
-    if (hasClimb) {
+    const addPane = (key, label, icon, fill) => {
       const pane = document.createElement('div');
       pane.className = 'fb-pane';
-      const cp = document.getElementById('climbing-filter-panel');
-      if (cp) { cp.classList.remove('collapsed'); pane.appendChild(cp); }  // move the wired panel
+      fill(pane);
       body.appendChild(pane);
-      panes.push({ key: 'climbing', label: 'Climbing', icon: 'fa-mountain-sun', el: pane });
-    }
-    if (hasTrails) {
-      const pane = document.createElement('div');
-      pane.className = 'fb-pane';
-      buildTrailFilters(pane, layers);
-      body.appendChild(pane);
-      panes.push({ key: 'trails', label: 'Trails', icon: 'fa-person-hiking', el: pane });
-    }
+      panes.push({ key, label, icon, el: pane });
+    };
 
-    if (!panes.length) { bar.style.display = 'none'; document.body.classList.remove('has-filters-bar'); return; }
-    bar.style.display = '';
-    document.body.classList.add('has-filters-bar');
+    if (has(CAMPING_SOURCE))
+      addPane('camping', 'Camping', 'fa-tent', p => p.appendChild(buildCampingFilters()));
+    if (layers.some(l => CLIMB_SOURCES.includes(l.source_key)))
+      addPane('climbing', 'Climbing', 'fa-mountain-sun', p => {
+        const cp = document.getElementById('climbing-filter-panel');
+        if (cp) { cp.classList.remove('collapsed'); p.appendChild(cp); }
+      });
+    if (layers.some(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops'))
+      addPane('trails', 'Trails', 'fa-person-hiking', p => buildTrailFilters(p, layers));
 
-    // Default to the Trails tab when present (it's the main-map focus), else first.
-    let active = panes.findIndex(p => p.key === 'trails');
-    if (active < 0) active = 0;
+    if (!panes.length) { tabsEl.style.display = 'none'; return; }
+
+    // Default: Camping on a campsite experience, else Trails, else the first tab.
+    const pl = (experienceConfig.experience && experienceConfig.experience.primary_layer) || null;
+    let active = 0;
+    if (pl === CAMPING_SOURCE) active = Math.max(0, panes.findIndex(p => p.key === 'camping'));
+    else { const ti = panes.findIndex(p => p.key === 'trails'); if (ti >= 0) active = ti; }
+
     panes.forEach((p, i) => {
       const t = document.createElement('button');
       t.className = 'fb-tab' + (i === active ? ' active' : '');
