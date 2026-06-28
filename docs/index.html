@@ -383,10 +383,9 @@
     .loop-empty { font-size: 11px; color: rgba(255,255,255,0.4); padding: 6px; }
 
     /* ── Filter tabs inside the experience bar (Camping / Climbing / Trails) ── */
-    /* Fixed filters width so every tab's filters area is identical (matches the
-       campground module's filters column); the search column adds the same 280px
-       on every tab, so the whole bar is one consistent width across tabs. */
-    #exp-filters .fb-body { max-height: min(58vh, 440px); overflow-y: auto; width: 260px; }
+    /* The bar is a fixed 80% of the map width; the filters area grows to fill
+       whatever the search column leaves, so every tab is the same 80% width. */
+    #exp-filters .fb-body { max-height: min(58vh, 440px); overflow-y: auto; width: 100%; }
     .fb-pane { display: none; }
     .fb-pane.active { display: block; }
     /* Relocated modules render normally inside a pane regardless of their old
@@ -1289,7 +1288,7 @@
       position: absolute; z-index: 45;
       top: calc(12px + env(safe-area-inset-top, 0px));
       left: 0; right: 0; margin: 0 auto;   /* center WITHOUT transform — a transform here would re-anchor the position:fixed mobile sheets to the bar instead of the viewport */
-      width: fit-content; max-width: calc(100% - 24px);   /* size to content; the slider matches the chips' width */
+      width: 80%; max-width: 80%;   /* every module spans 80% of the map width */
       font-family: 'Inter', sans-serif;
     }
     .exp-bar-row {
@@ -1325,6 +1324,7 @@
     #exp-bar.collapsed .exp-c-open { display: inline; }
     #exp-bar.collapsed .exp-c-caret { transform: rotate(180deg); }
     #exp-bar.collapsed #exp-collapse { position: static; background: rgba(155,194,60,0.14); border: 1px solid rgba(155,194,60,0.4); color: #b6d96a; }
+    #exp-bar.collapsed { width: fit-content; max-width: calc(100% - 24px); }   /* shrink back to the pill, not 80% */
     #exp-bar.collapsed .exp-bar-row { padding: 7px 12px; }
     #exp-bar.collapsed .exp-search-wrap,
     #exp-bar.collapsed .exp-filters,
@@ -1356,7 +1356,7 @@
     /* Inline, always-visible, compact filter cluster to the right of the search */
     /* Filters stack to the right of the search: price label + value, a full-width
        slider across the top, then the chips beneath it. */
-    .exp-filters { display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; min-width: 0; }
+    .exp-filters { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-width: 0; }   /* fill the rest of the 80%-wide bar beside the search column */
     .exp-filters .camp-filters { display: flex; flex-direction: column; gap: 11px; }   /* vertical space between the slider and the chips */
     .exp-filters .camp-price-filter.visible { display: block; }
     .exp-filters .camp-price-filter .df-row { margin: 0; display: flex; flex-direction: column; gap: 5px; }
