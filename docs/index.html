@@ -916,7 +916,7 @@
     .tr-loop-sortbtn { background: #eef3e4; color: #4a7a2a; border: 1px solid #d7e3bf; border-radius: 6px;
       padding: 3px 8px; font-size: 10px; font-weight: 800; cursor: pointer; font-family: inherit; }
     .tr-loop-sortbtn.active { background: #4a7a2a; color: #fff; border-color: #4a7a2a; }
-    .tr-loop-list { max-height: 140px; overflow-y: auto; }   /* JS sizes to exactly 4 rows; this is the fallback */
+    .tr-loop-list { max-height: 108px; overflow-y: auto; }   /* JS sizes to exactly 3 rows; this is the fallback */
     .tr-loop-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left;
       background: #f4f7ee; border: 1px solid #e3ead6; border-radius: 6px; padding: 6px 9px; margin-bottom: 4px;
       color: #1f3a17; font-size: 12px; cursor: pointer; font-family: inherit; }
@@ -5796,6 +5796,12 @@
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': '#1f5fa8', 'line-dasharray': [1.6, 1.4],
         'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.5, 16, 5], 'line-opacity': 0.9 } });
+    // Hover preview (from the trail-popup loop list) — lighter, under the selection.
+    map.addSource('loop_hover', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'loop_hover-line', type: 'line', source: 'loop_hover',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#ffe082', 'line-blur': 0.6,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 7], 'line-opacity': 0.85 } });
     map.addSource('loop_sel', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({ id: 'loop_sel-line', type: 'line', source: 'loop_sel',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -5861,9 +5867,16 @@
     const c = featureCentroid(f.geometry);
     if (c) openFeaturePopup(f, 'hiking_loops', c);
   }
+  function setLoopHover(geom) {
+    ensureLoopSel();
+    const s = map.getSource('loop_hover');
+    if (s) s.setData({ type: 'FeatureCollection', features: geom ? [{ type: 'Feature', geometry: geom, properties: {} }] : [] });
+  }
   function clearLoopSel() {
     const s = map.getSource('loop_sel');
     if (s) s.setData({ type: 'FeatureCollection', features: [] });
+    const hv = map.getSource('loop_hover');
+    if (hv) hv.setData({ type: 'FeatureCollection', features: [] });
     const sp = map.getSource('loop_spur');
     if (sp) sp.setData({ type: 'FeatureCollection', features: [] });
     const pk = map.getSource('park_sel');
@@ -6165,14 +6178,16 @@
               <span class="tr-loop-meta">${escapeHtml(loopMeta(f.properties))}</span>
             </button>`).join('');
           const rows = listEl.querySelectorAll('.tr-loop-row');
-          rows.forEach(btn => btn.addEventListener('click', () => {
+          rows.forEach(btn => {
             const lf = all.find(f => String((f.properties || {}).id) === String(btn.dataset.loopId));
-            if (lf) selectLoop(lf);
-          }));
-          // Show exactly 4 rows at a time; scroll for the rest.
-          if (rows.length > 4) {
+            btn.addEventListener('click', () => { if (lf) selectLoop(lf); });
+            btn.addEventListener('mouseenter', () => { if (lf) setLoopHover(lf.geometry); });
+            btn.addEventListener('mouseleave', () => setLoopHover(null));
+          });
+          // Show exactly 3 rows at a time; scroll for the rest.
+          if (rows.length > 3) {
             let h = 0;
-            for (let i = 0; i < 4; i++) h += rows[i].offsetHeight + parseFloat(getComputedStyle(rows[i]).marginBottom || 0);
+            for (let i = 0; i < 3; i++) h += rows[i].offsetHeight + parseFloat(getComputedStyle(rows[i]).marginBottom || 0);
             listEl.style.maxHeight = Math.round(h) + 'px';
           } else { listEl.style.maxHeight = 'none'; }
           loopBox.querySelectorAll('.tr-loop-sortbtn').forEach(b => {
