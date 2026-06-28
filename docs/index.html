@@ -414,6 +414,7 @@
        a 280px search-wrap + List button, so the search column matches camping. */
     #fb-search-host { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-width: 0; }
     #fb-search-host #cf-area { width: 100%; margin-top: 8px; }   /* Areas dropdown under the search bar */
+    #fb-search-host #cf-types { margin-top: 8px; }               /* type chips aligned under the dropdown */
     #exp-bar.collapsed #fb-search-host { display: none !important; }
     .fb-search .exp-search-wrap { flex: 0 1 280px; }
     .fb-list { display: none; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; margin-top: 6px;
@@ -4864,12 +4865,14 @@
     const tabsEl = document.getElementById('fb-tabs');
     const searchHost = document.getElementById('fb-search-host');
     if (!host || !tabsEl) return;
-    // Rescue the Areas dropdown back into the climbing panel before clearing the
-    // search column — it gets relocated under the climbing search and would
-    // otherwise be destroyed (with its wiring) on rebuild.
+    // Rescue the Areas dropdown + type chips back into the climbing panel before
+    // clearing the search column — they get relocated under the climbing search and
+    // would otherwise be destroyed (with their wiring) on rebuild.
     const cpPanel0 = document.getElementById('climbing-filter-panel');
-    const area0 = document.getElementById('cf-area');
-    if (cpPanel0 && area0 && !cpPanel0.contains(area0)) cpPanel0.appendChild(area0);
+    ['cf-area', 'cf-types'].forEach(id => {
+      const el = document.getElementById(id);
+      if (cpPanel0 && el && !cpPanel0.contains(el)) cpPanel0.appendChild(el);
+    });
     host.innerHTML = '';
     tabsEl.innerHTML = '';
     if (searchHost) searchHost.innerHTML = '';
@@ -4912,15 +4915,19 @@
           return out.slice(0, 200);
         },
       });
-      // Move the Areas dropdown under the climbing search bar (the slot the DNR
-      // availability button occupies under the campground search).
+      // Move the Areas dropdown + type chips under the climbing search bar (the
+      // slot the DNR availability button occupies under the campground search), so
+      // the chips sit vertically aligned beneath the dropdown.
       const climbSearchEl = searchHost && searchHost.querySelector('.fb-search[data-tab="climbing"]');
-      const areaSel = document.getElementById('cf-area');
-      if (climbSearchEl && areaSel) {
-        const lbl = areaSel.previousElementSibling;
-        if (lbl && lbl.classList.contains('cf-label')) lbl.remove();
+      if (climbSearchEl) {
         const fbList = climbSearchEl.querySelector('.fb-list');
-        climbSearchEl.insertBefore(areaSel, fbList);   // directly under the search row
+        ['cf-area', 'cf-types'].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const lbl = el.previousElementSibling;
+          if (lbl && lbl.classList.contains('cf-label')) lbl.remove();
+          climbSearchEl.insertBefore(el, fbList);   // under the search row, in order
+        });
       }
       addPane('climbing', 'Climbing', 'fa-mountain-sun', p => {
         const cp = document.getElementById('climbing-filter-panel');
@@ -4935,9 +4942,8 @@
         // Keep the in-panel .cf-search-wrap in the DOM (hidden via CSS) — its
         // #cf-search input is still wired by setupClimbingFilterListeners; the
         // visible search lives in the search column.
-        // (Areas dropdown now lives under the search bar in the search column.)
-        const dropLabel = el => { if (!el) return; const l = el.previousElementSibling; if (l && l.classList.contains('cf-label')) l.remove(); };
-        const types = cp.querySelector('#cf-types'); dropLabel(types);
+        // (Areas dropdown + type chips now live under the search bar in the
+        // search column; the pane keeps just the grade sliders.)
         const grades = document.createElement('div'); grades.className = 'cf-grades';
         cp.querySelectorAll('.cf-vrange').forEach(vr => {
           const grp = document.createElement('div'); grp.className = 'cf-grade';
@@ -4948,7 +4954,6 @@
         });
         // Reorder the controls in the panel (appendChild moves existing nodes).
         cp.appendChild(grades);
-        if (types) cp.appendChild(types);
         const rc = cp.querySelector('#cf-result-count'); if (rc) cp.appendChild(rc);
         const rst = cp.querySelector('#cf-reset'); if (rst) cp.appendChild(rst);
       });
