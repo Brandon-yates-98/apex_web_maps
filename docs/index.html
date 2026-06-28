@@ -1864,6 +1864,8 @@
   let climbSearchRef = null;     // the climbing tab's search (buildTabSearch instance)
   let trailBrowseTrail = 'all';  // trail whose loops the trail search lists ('all' = trail list)
   let trailSearchRef = null;     // the trails tab's search (buildTabSearch instance)
+  // Loop distance/elevation-gain filter (set by the Trails tab sliders).
+  const trailLoopFilter = { distMin: -Infinity, distMax: Infinity, gainMin: -Infinity, gainMax: Infinity };
 
   // Area-uuid chain a climb belongs to (root → immediate parent), newest schema
   // first; falls back to [area_id] then [area_name] for older imports.
@@ -4811,35 +4813,11 @@
           const chips = document.getElementById('poi-filter-chips');
           if (chips) chips.classList.toggle('visible', nowOn);
         }
-        if (layerCfg.source_key === 'hiking_loops') {
-          const lb = document.getElementById('loop-browser');
-          if (lb) lb.classList.toggle('visible', nowOn);
-          if (nowOn) populateLoopBrowser(); else clearLoopSel();
-        }
+        // Loops are browsed via the Trails tab's hierarchical search; clear any
+        // highlight when the layer is hidden.
+        if (layerCfg.source_key === 'hiking_loops' && !nowOn) clearLoopSel();
       });
       container.appendChild(row);
-
-      // Sortable loop browser beneath the Hiking Loops row.
-      if (layerCfg.source_key === 'hiking_loops') {
-        const lb = document.createElement('div');
-        lb.className = 'loop-browser' + (isOn ? ' visible' : '');
-        lb.id = 'loop-browser';
-        lb.innerHTML = `
-          <div class="loop-browser-bar">
-            <select id="loop-sort" class="loop-sort">
-              <option value="dist-asc">Distance, shortest</option>
-              <option value="dist-desc">Distance, longest</option>
-              <option value="name">Name</option>
-            </select>
-            <button id="loop-clear" class="loop-clear" type="button">Show all</button>
-          </div>
-          <div id="loop-list" class="loop-list"></div>`;
-        lb.addEventListener('click', e => e.stopPropagation());
-        lb.querySelector('#loop-sort').addEventListener('change', populateLoopBrowser);
-        lb.querySelector('#loop-clear').addEventListener('click', clearLoopSel);
-        container.appendChild(lb);
-        populateLoopBrowser();
-      }
 
       // Filter chips for the POI layer
       if (layerCfg.source_key === 'pois') {
@@ -5206,51 +5184,108 @@
       pane.appendChild(row);
     }
 
-    // Skill / surface attribute chips (values filled after data loads).
-    title('Skill level');
-    const skill = document.createElement('div'); skill.className = 'cf-chips ft-chip-row'; skill.id = 'ft-skill-row';
-    pane.appendChild(skill);
+    // Distance + elevation-gain range sliders (loop filters; bounds filled after
+    // data loads). Surface chips below.
+    title('Distance & elevation gain');
+    const ranges = document.createElement('div'); ranges.className = 'cf-grades'; ranges.id = 'ft-ranges';
+    pane.appendChild(ranges);
     title('Surface');
     const surf = document.createElement('div'); surf.className = 'cf-chips ft-chip-row'; surf.id = 'ft-surface-row';
     pane.appendChild(surf);
 
-    // Relocate the loop browser + POI chips (already built + wired).
-    const lb = document.getElementById('loop-browser');
-    if (lb) { title('Hiking loops'); pane.appendChild(lb); }
+    // Relocate the POI chips (loops are now browsed via the hierarchical search).
     const poi = document.getElementById('poi-filter-chips');
     if (poi) { title('Points of interest'); pane.appendChild(poi); }
+
+    // Fill the surface chips + distance/elevation sliders (data is usually already
+    // cached on a rebuild; init also calls this after the first data load).
+    populateTrailAttrFilters();
   }
 
-  // Fill the skill/surface chips from loaded trail data + wire the filter. Called
-  // after loadLayerData (values aren't known until the trail features are cached).
+  // Fill the surface chips + distance/elevation sliders from loaded data. Called
+  // after loadLayerData (values aren't known until the features are cached).
   function populateTrailAttrFilters() {
-    const skillRow = document.getElementById('ft-skill-row');
     const surfRow = document.getElementById('ft-surface-row');
-    if (!skillRow || !surfRow) return;
-    const skills = new Set(), surfaces = new Set();
-    LOOP_TRAIL_SOURCES.forEach(k => {
-      ((layerCache[k] || {}).features || []).forEach(f => {
-        const p = f.properties || {};
-        if (p.skill_level) skills.add(String(p.skill_level));
-        if (p.surface) surfaces.add(String(p.surface));
+    if (surfRow) {
+      const surfaces = new Set();
+      LOOP_TRAIL_SOURCES.forEach(k => {
+        ((layerCache[k] || {}).features || []).forEach(f => {
+          const s = (f.properties || {}).surface;
+          if (s) surfaces.add(String(s));
+        });
       });
-    });
-    const build = (rowEl, values, kind) => {
-      rowEl.innerHTML = '';
-      if (!values.size) { rowEl.innerHTML = '<span class="loop-empty">none</span>'; return; }
-      [...values].sort().forEach(v => {
+      surfRow.innerHTML = '';
+      if (!surfaces.size) surfRow.innerHTML = '<span class="loop-empty">none</span>';
+      else [...surfaces].sort().forEach(v => {
         const chip = document.createElement('span');
-        chip.className = 'cf-chip' + (trailAttr[kind].has(v) ? ' active' : '');
+        chip.className = 'cf-chip' + (trailAttr.surface.has(v) ? ' active' : '');
         chip.textContent = v;
         chip.addEventListener('click', () => {
-          if (chip.classList.toggle('active')) trailAttr[kind].add(v); else trailAttr[kind].delete(v);
+          if (chip.classList.toggle('active')) trailAttr.surface.add(v); else trailAttr.surface.delete(v);
           applyTrailFilters();
         });
-        rowEl.appendChild(chip);
+        surfRow.appendChild(chip);
       });
+    }
+    populateTrailRanges();
+  }
+
+  // A two-thumb range control styled like the climbing grade sliders.
+  function buildRangeControl({ label, min, max, step, fmt, onChange }) {
+    const wrap = document.createElement('div'); wrap.className = 'cf-grade';
+    const lbl = document.createElement('div'); lbl.className = 'cf-label'; lbl.textContent = label + ' ';
+    const val = document.createElement('span'); val.className = 'cf-vrange-val'; lbl.appendChild(val);
+    const vr = document.createElement('div'); vr.className = 'cf-vrange';
+    const fill = document.createElement('div'); fill.className = 'cf-vrange-fill';
+    const lo = document.createElement('input'), hi = document.createElement('input');
+    [lo, hi].forEach(inp => { inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; });
+    lo.value = min; hi.value = max;
+    vr.append(fill, lo, hi); wrap.append(lbl, vr);
+    const span = (max - min) || 1;
+    const sync = fromLo => {
+      let a = +lo.value, b = +hi.value;
+      if (a > b) { if (fromLo) { b = a; hi.value = a; } else { a = b; lo.value = b; } }
+      fill.style.left = ((a - min) / span * 100) + '%';
+      fill.style.right = (100 - (b - min) / span * 100) + '%';
+      val.textContent = (a <= min && b >= max) ? 'Any' : fmt(a, b);
+      onChange(a <= min ? -Infinity : a, b >= max ? Infinity : b);
     };
-    build(skillRow, skills, 'skill');
-    build(surfRow, surfaces, 'surface');
+    lo.addEventListener('input', () => sync(true));
+    hi.addEventListener('input', () => sync(false));
+    sync(true);
+    return wrap;
+  }
+
+  // Build the Distance + Elevation-gain sliders from the loaded loop data.
+  function populateTrailRanges() {
+    const host = document.getElementById('ft-ranges');
+    if (!host) return;
+    let dMax = 0, gMax = 0;
+    ((layerCache['hiking_loops'] || {}).features || []).forEach(f => {
+      const p = f.properties || {}, d = +p.distance_mi, g = +p.elev_gain_ft;
+      if (!isNaN(d)) dMax = Math.max(dMax, d);
+      if (!isNaN(g)) gMax = Math.max(gMax, g);
+    });
+    const dHi = Math.max(1, Math.ceil(dMax * 2) / 2);   // 0.5 mi steps
+    const gHi = Math.max(50, Math.ceil(gMax / 50) * 50); // 50 ft steps
+    trailLoopFilter.distMin = -Infinity; trailLoopFilter.distMax = Infinity;
+    trailLoopFilter.gainMin = -Infinity; trailLoopFilter.gainMax = Infinity;
+    host.innerHTML = '';
+    host.appendChild(buildRangeControl({
+      label: 'Distance', min: 0, max: dHi, step: 0.5, fmt: (a, b) => `${a}–${b} mi`,
+      onChange: (a, b) => { trailLoopFilter.distMin = a; trailLoopFilter.distMax = b; if (trailSearchRef) trailSearchRef.refresh(); },
+    }));
+    host.appendChild(buildRangeControl({
+      label: 'Elevation gain', min: 0, max: gHi, step: 50, fmt: (a, b) => `${a}–${b} ft`,
+      onChange: (a, b) => { trailLoopFilter.gainMin = a; trailLoopFilter.gainMax = b; if (trailSearchRef) trailSearchRef.refresh(); },
+    }));
+  }
+  // A loop passes the distance/elevation-gain filter.
+  function loopPassesFilter(p) {
+    const d = +p.distance_mi, g = +p.elev_gain_ft;
+    if (!isNaN(d) && (d < trailLoopFilter.distMin || d > trailLoopFilter.distMax)) return false;
+    if (!isNaN(g) && (g < trailLoopFilter.gainMin || g > trailLoopFilter.gainMax)) return false;
+    return true;
   }
 
   // Filter every sauk_trail_* line/case layer by the selected skill/surface values
@@ -5564,7 +5599,7 @@
   function loopsForTrail(name) {
     const nl = name.toLowerCase();
     return ((layerCache['hiking_loops'] || {}).features || [])
-      .filter(f => loopTrailNames(f.properties).some(t => t.toLowerCase() === nl));
+      .filter(f => loopPassesFilter(f.properties) && loopTrailNames(f.properties).some(t => t.toLowerCase() === nl));
   }
   // Loop list meta = distance + elevation gain (in place of climbing's grade).
   function loopMeta(p) {
@@ -5582,7 +5617,7 @@
       return ((layerCache['hiking_loops'] || {}).features || [])
         .filter(f => {
           const nm = f.properties.name || '';
-          if (!nm.toLowerCase().includes(ql)) return false;
+          if (!nm.toLowerCase().includes(ql) || !loopPassesFilter(f.properties)) return false;
           return scope === 'all' || loopTrailNames(f.properties).some(t => t.toLowerCase() === scope.toLowerCase());
         })
         .sort(byDist).slice(0, 200)
