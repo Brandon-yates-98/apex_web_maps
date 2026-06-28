@@ -5162,12 +5162,19 @@
         if (cfg.onSort) cfg.onSort(b.dataset.sort);
         renderRows(cfg.getItems(input.value.trim()));
       }));
-      list.querySelectorAll('.exp-row').forEach(b => b.addEventListener('click', () => {
-        // fly() may return true to keep the list open (e.g. drilling into an
-        // area reveals its children in place instead of dismissing the list).
-        const keep = items[+b.dataset.i].fly();
-        if (!keep) closeList();
-      }));
+      list.querySelectorAll('.exp-row').forEach(b => {
+        const it = items[+b.dataset.i];
+        b.addEventListener('click', () => {
+          // fly() may return true to keep the list open (e.g. drilling into an
+          // area reveals its children in place instead of dismissing the list).
+          if (!it.fly()) closeList();
+        });
+        // Optional per-item hover preview (e.g. highlight a loop on the map).
+        if (it.hover) {
+          b.addEventListener('mouseenter', () => it.hover(true));
+          b.addEventListener('mouseleave', () => it.hover(false));
+        }
+      });
       const cb = list.querySelector('.fb-collapse');
       if (cb) cb.addEventListener('click', closeList);
     };
@@ -5184,12 +5191,15 @@
       if (input.value.trim()) { list.classList.add('open'); listBtn.classList.add('active'); renderRows(items); }
     });
     clear.addEventListener('click', () => { input.value = ''; update(); list.classList.remove('open'); listBtn.classList.remove('active'); });
+    const openList = () => {
+      list.classList.add('open'); listBtn.classList.add('active');
+      renderRows(cfg.getItems(input.value.trim()));
+      if (cfg.onOpen) cfg.onOpen();
+    };
     listBtn.addEventListener('click', () => {
-      const open = list.classList.toggle('open');
-      listBtn.classList.toggle('active', open);
-      if (open) renderRows(cfg.getItems(input.value.trim()));
+      if (list.classList.contains('open')) closeList();
+      else openList();
     });
-    const openList = () => { list.classList.add('open'); listBtn.classList.add('active'); renderRows(cfg.getItems(input.value.trim())); };
     input.addEventListener('focus', openList);   // clicking into the search opens the list
     return { el: wrap, refresh: update, open: openList };
   }
@@ -5343,6 +5353,7 @@
             ${sortBtnHTML('gain', 'Elev gain', trailLoopSort)}
           </div>` : '',
         onSort: v => { cycleSort(trailLoopSort, v); },
+        onOpen: () => fitHikingList(),   // fit the map to the listed loops when opened
       });
       // Trails | Loops layer toggle under the hiking search bar — the module shows
       // one at a time (the layer manager can still override).
@@ -5974,7 +5985,7 @@
           return scope === 'all' || loopTrailNames(f.properties).some(t => t.toLowerCase() === scope.toLowerCase());
         })
         .sort(loopSorter).slice(0, 200)
-        .map(f => ({ name: f.properties.name || 'Loop', meta: loopMeta(f.properties), fly: () => { selectLoop(f); } }));
+        .map(f => ({ name: f.properties.name || 'Loop', meta: loopMeta(f.properties), fly: () => { selectLoop(f); }, hover: on => setLoopHover(on ? f.geometry : null) }));
     }
     if (trailBrowseTrail === 'all') {
       // Default sort: most loops first (tie-break by name).
@@ -5989,9 +6000,27 @@
     }
     const items = [{ name: '↑ All Trails', meta: '', fly: () => { revealTrail('all'); return true; } }];
     const loops = loopsForTrail(trailBrowseTrail).sort(loopSorter);
-    loops.forEach(f => items.push({ name: f.properties.name || 'Loop', meta: loopMeta(f.properties), fly: () => { selectLoop(f); } }));
+    loops.forEach(f => items.push({ name: f.properties.name || 'Loop', meta: loopMeta(f.properties), fly: () => { selectLoop(f); }, hover: on => setLoopHover(on ? f.geometry : null) }));
     if (!loops.length) items.push({ name: 'No loops on this trail', meta: '', fly: () => {} });
     return items;
+  }
+  // Fit the map to the loops currently relevant to the hiking list (a trail's
+  // loops when drilled, else all loops passing the filter).
+  function fitHikingList() {
+    if (!map || typeof mapboxgl === 'undefined') return;
+    const feats = trailBrowseTrail !== 'all'
+      ? loopsForTrail(trailBrowseTrail)
+      : ((layerCache['hiking_loops'] || {}).features || []).filter(f => loopPassesFilter(f.properties));
+    if (!feats || !feats.length) return;
+    const b = new mapboxgl.LngLatBounds();
+    feats.forEach(f => {
+      const g = f.geometry; if (!g) return;
+      const lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+      lines.forEach(line => line.forEach(c => b.extend(c)));
+    });
+    if (b.isEmpty()) return;
+    const top = Math.min(340, (map.getContainer().clientHeight || 600) * 0.45);
+    map.fitBounds(b, { padding: { top, bottom: 40, left: 40, right: 40 }, maxZoom: 14 });
   }
   // Select a trail (zoom + highlight) and reveal its loops in the search list.
   function revealTrail(name) {
