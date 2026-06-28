@@ -2319,6 +2319,27 @@
   }
 
   let _availWired = false;
+  // Campsite availability icons only render at z>=14.5 (see the campsite_sites
+  // icon layer). Zoom/pan to the Campflare campsites at a zoom that guarantees
+  // they (and their availability colors) are visible.
+  const AVAIL_MIN_ZOOM = 14.6;
+  function zoomToAvailCampsites() {
+    if (!map || typeof mapboxgl === 'undefined') return;
+    const feats = ((layerCache[CAMPSITE_SOURCE] || {}).features) || [];
+    if (!feats.length) return;
+    const configured = feats.filter(f => f.properties && CAMPFLARE_CAMPGROUNDS[f.properties.campground]);
+    const use = configured.length ? configured : feats;
+    const b = new mapboxgl.LngLatBounds();
+    use.forEach(f => { const g = f.geometry; if (g && g.type === 'Point') b.extend(g.coordinates); });
+    if (b.isEmpty()) return;
+    // Make sure the campsite layer is actually on so there's something to see.
+    if (typeof setLayerVisible === 'function') setLayerVisible(CAMPSITE_SOURCE, true);
+    const pad = isMobile() ? 40 : 80;
+    const cam = map.cameraForBounds(b, { padding: pad, maxZoom: 17 });
+    if (!cam) { map.easeTo({ center: b.getCenter(), zoom: AVAIL_MIN_ZOOM }); return; }
+    map.easeTo({ center: cam.center, zoom: Math.max(cam.zoom, AVAIL_MIN_ZOOM) });
+  }
+
   function openAvailModal() {
     const modal = document.getElementById('avail-modal');
     if (!modal) return;
@@ -2418,7 +2439,7 @@
 
   // The availability button is (re)built with the camp filters, so delegate.
   document.addEventListener('click', e => {
-    if (e.target.closest('#avail-btn')) openAvailModal();
+    if (e.target.closest('#avail-btn')) { zoomToAvailCampsites(); openAvailModal(); }
     else if (e.target.closest('#avail-chip-clear')) clearAvailability();
   });
 
