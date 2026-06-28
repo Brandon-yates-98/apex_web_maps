@@ -5082,37 +5082,36 @@
       // headings top-align and the sliders bottom-align with it.
       if (activeFilterTab === 'climbing') requestAnimationFrame(syncClimbGradeHeight);
     };
-    // Switching to a tab turns on that module's mapping layer(s). Uses each
-    // layer's sidebar row (so lazy data-load + state stay correct); climbing
-    // follows its own enable path (split area rows, like selectClimbArea).
+    // Switching to a tab sets a sensible, exclusive layer set: the module's own
+    // layers on, the other modules' layers off, with parking + roads always on.
+    // (All layer data is loaded up front, so toggling visibility is sufficient.)
+    const MODULE_LAYERS = {
+      camping: [CAMPING_SOURCE, CAMPSITE_SOURCE],
+      climbing: ['climbing_areas'],
+      trails: [...LOOP_TRAIL_SOURCES, 'hiking_loops'],
+    };
+    const ALWAYS_ON_LAYERS = ['parking', 'roads'];
+    const setLayer = (key, on) => {
+      if (!layerMeta[key]) return;
+      setLayerVisible(key, on);
+      const row = document.querySelector(`.layer-row[data-source="${key}"]`);
+      if (row) row.classList.toggle('on', on);
+    };
     const enableTabLayers = tabKey => {
-      const enableRow = key => {
-        const row = document.querySelector(`.layer-row[data-source="${key}"]`);
-        if (row && !row.classList.contains('on')) row.click();
-        else if (!row && layerMeta[key]) setLayerVisible(key, true);
-      };
-      if (tabKey === 'camping') {
-        [CAMPING_SOURCE, CAMPSITE_SOURCE].forEach(enableRow);
-      } else if (tabKey === 'climbing') {
-        CLIMBING_SOURCES.forEach(s => {
-          if (!layerMeta[s]) return;
-          setLayerVisible(s, true);
-          const row = document.querySelector(`.layer-row[data-source="${s}"]`);
-          if (row) row.classList.add('on');
-        });
+      Object.keys(MODULE_LAYERS).forEach(m => {
+        const on = m === tabKey;
+        MODULE_LAYERS[m].forEach(k => setLayer(k, on));
+      });
+      // Climbing renders through split area rows (routes/boulders); mirror them.
+      if (layerMeta['climbing_areas']) {
+        const climbOn = tabKey === 'climbing';
         ['routes', 'boulders'].forEach(t => {
+          setLayerVisible(`climbing_areas@${t}`, climbOn);
           const row = document.querySelector(`.layer-row[data-source="climbing_areas@${t}"]`);
-          if (row) row.classList.add('on');
-        });
-      } else if (tabKey === 'trails') {
-        layers.filter(l => LOOP_TRAIL_SOURCES.includes(l.source_key) || l.source_key === 'hiking_loops')
-          .forEach(l => enableRow(l.source_key));
-        // reflect the now-enabled layers in the trail tab's layer chips
-        document.querySelectorAll('#exp-filters .ft-chip-row .cf-chip[data-source]').forEach(chip => {
-          const r = document.querySelector(`.layer-row[data-source="${chip.dataset.source}"]`);
-          chip.classList.toggle('active', !!(r && r.classList.contains('on')));
+          if (row) row.classList.toggle('on', climbOn);
         });
       }
+      ALWAYS_ON_LAYERS.forEach(k => setLayer(k, true));   // parking + roads on everywhere
     };
     panes.forEach((p, i) => {
       const t = document.createElement('button');
@@ -5123,6 +5122,7 @@
     });
     tabsEl.style.display = panes.length > 1 ? '' : 'none';
     setActive(active);
+    if (panes[active]) enableTabLayers(panes[active].key);   // sensible layers for the starting module
   }
 
   // The campground search bar + List (.exp-bar-main) is shown only on the Camping tab.
