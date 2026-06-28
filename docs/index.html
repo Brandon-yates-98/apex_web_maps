@@ -5160,8 +5160,7 @@
 
     // (Trail-name search lives in the shared search column, built in buildFiltersBar.)
     // Distance + elevation-gain range sliders (loop filters; bounds filled after
-    // data loads). Layer + surface filters are dropped for now.
-    title('Distance & elevation gain');
+    // data loads). The sliders carry their own labels, so no section header.
     const ranges = document.createElement('div'); ranges.className = 'cf-grades'; ranges.id = 'ft-ranges';
     pane.appendChild(ranges);
 
