@@ -1978,8 +1978,23 @@
   let climbSearchRef = null;     // the climbing tab's search (buildTabSearch instance)
   let trailBrowseTrail = 'all';  // trail whose loops the trail search lists ('all' = trail list)
   let trailSearchRef = null;     // the trails tab's search (buildTabSearch instance)
-  let trailLoopSort = 'dist';    // loop list sort: 'dist' | 'gain'
+  // 3-state sorts: { field: <key>|null (off), dir: 'desc'|'asc' }.
+  const trailLoopSort = { field: null, dir: 'desc' };   // loop list: 'dist' | 'gain'
   let trailShowingLoops = false; // true when the trail list is showing loops (sort header)
+  const climbSort = { field: null, dir: 'desc' };       // climbing list: 'grade'
+  let climbShowingClimbs = false;
+  // Cycle a sort button: inactive -> desc -> asc -> off.
+  function cycleSort(state, field) {
+    if (state.field !== field) { state.field = field; state.dir = 'desc'; }
+    else if (state.dir === 'desc') { state.dir = 'asc'; }
+    else { state.field = null; state.dir = 'desc'; }
+  }
+  // A sort button's HTML (arrow reflects desc/asc/off for that field).
+  function sortBtnHTML(field, label, state) {
+    const on = state.field === field;
+    const ar = on ? `<i class="fa-solid ${state.dir === 'desc' ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}"></i>` : '';
+    return `<button class="fb-sort-btn${on ? ' active' : ''}" type="button" data-sort="${field}">${label}${ar ? ' ' + ar : ''}</button>`;
+  }
   // Loop distance/elevation-gain filter (set by the Trails tab sliders).
   const trailLoopFilter = { distMin: -Infinity, distMax: Infinity, gainMin: -Infinity, gainMax: Infinity };
   let hikingLayerMode = 'trails';   // hiking module shows ONE of: trail lines ('trails') or loops ('loops')
@@ -3004,24 +3019,48 @@
     const climbs = [];
     CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
       const p = f.properties; const nm = p.name || '';
-      if (nm && climbImmediateAreaKey(p) === areaKey) climbs.push({ name: nm, meta: p.grade || '', fly: () => { flyToClimb(src, p.id); } });
+      if (nm && climbImmediateAreaKey(p) === areaKey) climbs.push({ name: nm, meta: p.grade || '', _rank: climbGradeRank(p.grade), fly: () => { flyToClimb(src, p.id); } });
     }));
     climbs.sort((a, b) => a.name.localeCompare(b.name));
     return items.concat(climbs);
+  }
+  // Sortable grade rank: routes (YDS) first, then boulders (V); unrated last.
+  function climbGradeRank(grade) {
+    const r = ydsRank(grade); if (r >= 0) return r;
+    const v = vRank(grade); if (v >= 0) return 1000 + v;
+    return -1;
   }
   // Search items: empty → browse the current area's children; query → climbs in
   // the current area's sub-tree matching the text.
   function climbingSearchItems(q) {
     const ql = (q || '').trim().toLowerCase();
-    if (!ql) return climbAreaChildren(climbBrowseArea);
-    const out = [];
-    CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
-      const p = f.properties; const nm = p.name || '';
-      if (nm && nm.toLowerCase().includes(ql) && climbInSubtree(p, climbBrowseArea))
-        out.push({ name: nm, meta: p.grade || '', fly: () => { flyToClimb(src, p.id); } });
-    }));
-    out.sort((a, b) => a.name.localeCompare(b.name));
-    return out.slice(0, 200);
+    let items;
+    if (!ql) items = climbAreaChildren(climbBrowseArea);
+    else {
+      items = [];
+      CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
+        const p = f.properties; const nm = p.name || '';
+        if (nm && nm.toLowerCase().includes(ql) && climbInSubtree(p, climbBrowseArea))
+          items.push({ name: nm, meta: p.grade || '', _rank: climbGradeRank(p.grade), fly: () => { flyToClimb(src, p.id); } });
+      }));
+      items.sort((a, b) => a.name.localeCompare(b.name));
+      items = items.slice(0, 200);
+    }
+    climbShowingClimbs = items.some(it => it._rank !== undefined);
+    // Grade sort (3-state): areas stay grouped above the climbs.
+    if (climbSort.field === 'grade') {
+      const areas = items.filter(it => it._rank === undefined);
+      const climbs = items.filter(it => it._rank !== undefined);
+      climbs.sort((a, b) => {
+        const ra = a._rank, rb = b._rank;
+        if (ra < 0 && rb < 0) return 0;
+        if (ra < 0) return 1; if (rb < 0) return -1;
+        const d = ra - rb;
+        return climbSort.dir === 'desc' ? -d : d;
+      });
+      items = areas.concat(climbs);
+    }
+    return items;
   }
   // Select an area (zoom + filter + dropdown sync) and reveal its children in the
   // search list.
@@ -3721,8 +3760,8 @@
     const loopsHTML = loops.length ? `<div class="tr-pop-loops">
         <div class="tr-loop-sort">
           <span class="tr-loop-sort-lbl"><i class="fa-solid fa-arrows-spin"></i> Loops on this trail</span>
-          <button class="tr-loop-sortbtn active" type="button" data-sort="dist">Length</button>
-          <button class="tr-loop-sortbtn" type="button" data-sort="gain">Elev gain</button>
+          <button class="tr-loop-sortbtn" type="button" data-sort="dist" data-label="Length">Length</button>
+          <button class="tr-loop-sortbtn" type="button" data-sort="gain" data-label="Elev gain">Elev gain</button>
         </div>
         <div class="tr-loop-list"></div>
       </div>` : '';
@@ -5233,6 +5272,12 @@
       climbSearchRef = addTabSearch('climbing', {
         placeholder: 'Search areas & climbs…',
         getItems: q => climbingSearchItems(q),
+        // Grade sort (3-state: desc -> asc -> off) — only while climbs are listed.
+        header: () => climbShowingClimbs ? `<div class="fb-sort">
+            <span class="fb-sort-lbl">Sort</span>
+            ${sortBtnHTML('grade', 'Grade', climbSort)}
+          </div>` : '',
+        onSort: v => { cycleSort(climbSort, v); },
       });
       // Move the type chips under the climbing search bar. The old Areas dropdown
       // is replaced by the hierarchical browse list (open via the List button), so
@@ -5289,13 +5334,14 @@
       trailSearchRef = addTabSearch('trails', {
         placeholder: 'Search trails & loops…',
         getItems: q => trailsSearchItems(q),
-        // Sort controls at the top of the list — only while showing loops.
+        // Sort controls at the top of the list — only while showing loops. Each
+        // button cycles descending -> ascending -> off (arrow shows direction).
         header: () => trailShowingLoops ? `<div class="fb-sort">
             <span class="fb-sort-lbl">Sort</span>
-            <button class="fb-sort-btn${trailLoopSort === 'dist' ? ' active' : ''}" data-sort="dist">Distance</button>
-            <button class="fb-sort-btn${trailLoopSort === 'gain' ? ' active' : ''}" data-sort="gain">Elev gain</button>
+            ${sortBtnHTML('dist', 'Distance', trailLoopSort)}
+            ${sortBtnHTML('gain', 'Elev gain', trailLoopSort)}
           </div>` : '',
-        onSort: v => { trailLoopSort = v; },
+        onSort: v => { cycleSort(trailLoopSort, v); },
       });
       // Trails | Loops layer toggle under the hiking search bar — the module shows
       // one at a time (the layer manager can still override).
@@ -5894,10 +5940,11 @@
   }
   // Loop sort: by distance or by elevation gain (ascending), per the sort header.
   const loopSorter = (a, b) => {
-    const pa = a.properties || {}, pb = b.properties || {};
-    return trailLoopSort === 'gain'
-      ? (+pa.elev_gain_ft || 0) - (+pb.elev_gain_ft || 0)
-      : (+pa.distance_mi || 0) - (+pb.distance_mi || 0);
+    const pa = a.properties || {}, pb = b.properties || {}, s = trailLoopSort;
+    if (!s.field) return (+pa.distance_mi || 0) - (+pb.distance_mi || 0);   // off = default (distance asc)
+    const key = s.field === 'gain' ? 'elev_gain_ft' : 'distance_mi';
+    const d = (+pa[key] || 0) - (+pb[key] || 0);
+    return s.dir === 'desc' ? -d : d;
   };
   // Search items: empty -> browse (trails at top, a trail's loops when drilled);
   // query -> loops within the current scope, matching the text.
@@ -6103,11 +6150,14 @@
         const all = ((layerCache['hiking_loops'] || {}).features || [])
           .filter(f => loopTrailNames(f.properties).some(t => t.toLowerCase() === nm));
         const listEl = loopBox.querySelector('.tr-loop-list');
-        let mode = 'dist';
+        const sort = { field: null, dir: 'desc' };   // off = default (distance asc)
         const renderLoops = () => {
-          const sorted = all.slice().sort((a, b) => mode === 'gain'
-            ? (+a.properties.elev_gain_ft || 0) - (+b.properties.elev_gain_ft || 0)
-            : (+a.properties.distance_mi || 0) - (+b.properties.distance_mi || 0));
+          const sorted = all.slice().sort((a, b) => {
+            if (!sort.field) return (+a.properties.distance_mi || 0) - (+b.properties.distance_mi || 0);
+            const key = sort.field === 'gain' ? 'elev_gain_ft' : 'distance_mi';
+            const d = (+a.properties[key] || 0) - (+b.properties[key] || 0);
+            return sort.dir === 'desc' ? -d : d;
+          });
           listEl.innerHTML = sorted.slice(0, 3).map(f =>
             `<button class="tr-loop-row" type="button" data-loop-id="${escapeHtml(String((f.properties || {}).id))}">
               <span class="tr-loop-nm">${escapeHtml(f.properties.name || 'Loop')}</span>
@@ -6117,10 +6167,15 @@
             const lf = all.find(f => String((f.properties || {}).id) === String(btn.dataset.loopId));
             if (lf) selectLoop(lf);
           }));
-          loopBox.querySelectorAll('.tr-loop-sortbtn').forEach(b => b.classList.toggle('active', b.dataset.sort === mode));
+          loopBox.querySelectorAll('.tr-loop-sortbtn').forEach(b => {
+            const on = sort.field === b.dataset.sort;
+            b.classList.toggle('active', on);
+            const ar = on ? `<i class="fa-solid ${sort.dir === 'desc' ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}"></i>` : '';
+            b.innerHTML = b.dataset.label + (ar ? ' ' + ar : '');
+          });
         };
         loopBox.querySelectorAll('.tr-loop-sortbtn').forEach(b =>
-          b.addEventListener('click', () => { mode = b.dataset.sort; renderLoops(); }));
+          b.addEventListener('click', () => { cycleSort(sort, b.dataset.sort); renderLoops(); }));
         renderLoops();
       }
       // Submit photo button
