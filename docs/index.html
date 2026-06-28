@@ -40,7 +40,11 @@
       person_profiles: 'identified_only',    // anonymous visitors don't create profiles (lighter, cheaper)
       autocapture: true,                     // auto-track clicks/inputs on buttons & links
       capture_pageview: true,
-      disable_session_recording: false       // session replay on (project opt-in also enabled)
+      disable_session_recording: false,      // session replay on (project opt-in also enabled)
+      // TRIAL: low-rate canvas capture so a sampled set of replays show the map
+      // (project records 5% of sessions; canvas opt-in is on project-side). Drop
+      // this block + the map's preserveDrawingBuffer to end the trial.
+      session_recording: { captureCanvas: { canvasFps: 2, canvasQuality: '0.2' } }
     });
     // Segment every event by which experience the visitor is in. Registered
     // synchronously from the URL so the FIRST pageview already carries it (most
@@ -4003,6 +4007,10 @@
     zoom: 11,
     attributionControl: false,
     cooperativeGestures: IS_EMBED,
+    // TRIAL: needed so PostHog session-replay can read the WebGL canvas (else map
+    // frames record blank). Has a small rendering cost — remove when the canvas
+    // session-replay trial ends. Sampling is set project-side (5%).
+    preserveDrawingBuffer: true,
   });
   // Compact (ⓘ button) attribution — basemap credits flow in from the active
   // style/source; data + icon credits ride along as customAttribution.
