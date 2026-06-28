@@ -378,6 +378,11 @@
     .fb-tab.active { background: rgba(14,22,12,0.92); color: #9bc23c; }
     .ft-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
     #exp-bar.collapsed .fb-tabs { display: none !important; }
+    /* Per-tab search + inline result list (reuses the campsite search styling) */
+    .fb-search { margin-bottom: 8px; }
+    .fb-search .exp-search-wrap { width: 100%; }
+    .fb-list { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; margin-top: 6px; }
+    #exp-filters .cf-search-wrap { display: none; }   /* climbing uses the unified search */
 
     /* ── Climbing filter panel ── */
     #climbing-filter-panel { display: none; }
@@ -2960,12 +2965,10 @@
     // The bar now also hosts the Camping/Climbing/Trails filter tabs, so show it
     // whenever either a primary layer (campsite search) or any filter tab exists.
     const hasFilters = !!bar.querySelector('#exp-filters .fb-pane');
-    const mainEl = bar.querySelector('.exp-bar-main');
     if (!expPrimaryLayer && !hasFilters) { bar.style.display = 'none'; document.body.classList.remove('has-exp-bar'); return; }
     bar.style.display = '';
     document.body.classList.add('has-exp-bar');
     if (expPrimaryLayer) {
-      if (mainEl) mainEl.style.display = '';
       const meta = layerMeta[expPrimaryLayer];
       const label = (meta && meta.label) ? meta.label.toLowerCase() : 'features';
       const input = document.getElementById('exp-search');
@@ -2977,9 +2980,8 @@
       if (availBar) availBar.style.display =
         (layerCache[CAMPSITE_SOURCE] && Object.values(CAMPFLARE_CAMPGROUNDS).some(Boolean)) ? '' : 'none';
       refreshExpList();
-    } else if (mainEl) {
-      mainEl.style.display = 'none';   // no campsite search/list on the main map
     }
+    syncCampSearch();   // campground search/list shows only on the Camping tab
     requestAnimationFrame(syncBarHeight);
   }
 
@@ -4716,6 +4718,49 @@
   // strip in #fb-tabs), relocating the already-wired climbing panel + loop browser
   // + POI chips, and adding trail type toggles + skill/surface attribute filters.
   const trailAttr = { skill: new Set(), surface: new Set() };
+  let activeFilterTab = null;
+
+  // Reusable per-tab search box + inline result list, styled like the campsite
+  // search/list. cfg.getItems(query) -> [{name, meta, fly()}]; pick calls fly().
+  function buildTabSearch(cfg) {
+    const wrap = document.createElement('div');
+    wrap.className = 'fb-search';
+    wrap.innerHTML = `
+      <div class="exp-search-wrap">
+        <i class="fa-solid fa-magnifying-glass exp-search-icon"></i>
+        <input type="text" class="exp-search-input" placeholder="${cfg.placeholder}" autocomplete="off" />
+        <button class="exp-clear-btn" type="button" style="display:none">×</button>
+      </div>
+      <div class="fb-list"></div>`;
+    const input = wrap.querySelector('input');
+    const clear = wrap.querySelector('.exp-clear-btn');
+    const list = wrap.querySelector('.fb-list');
+    const render = () => {
+      const q = input.value.trim();
+      clear.style.display = q ? '' : 'none';
+      const items = cfg.getItems(q);
+      list.innerHTML = items.length
+        ? items.map((it, i) => `<button class="exp-row" data-i="${i}"><span class="exp-row-name">${escapeHtml(it.name)}</span>${it.meta ? `<span class="exp-row-meta">${escapeHtml(it.meta)}</span>` : ''}</button>`).join('')
+        : (q ? '<div class="exp-list-empty">No matches</div>' : '');
+      list.querySelectorAll('.exp-row').forEach(b => b.addEventListener('click', () => items[+b.dataset.i].fly()));
+    };
+    input.addEventListener('input', render);
+    clear.addEventListener('click', () => { input.value = ''; render(); });
+    return { el: wrap, refresh: render };
+  }
+
+  // Fly + highlight every segment of a named trail (its "variants").
+  function flyToTrailName(feats) {
+    const s = map.getSource('trail_hl');
+    if (s) s.setData({ type: 'FeatureCollection', features: feats.map(f => ({ type: 'Feature', geometry: f.geometry, properties: {} })) });
+    let a = 180, b = 90, c = -180, d = -90;
+    feats.forEach(f => {
+      const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates]
+        : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [];
+      lines.forEach(line => line.forEach(([x, y]) => { if (x < a) a = x; if (y < b) b = y; if (x > c) c = x; if (y > d) d = y; }));
+    });
+    if (a <= c) map.fitBounds([[a, b], [c, d]], { padding: isMobile() ? 40 : 80, maxZoom: 15 });
+  }
 
   // The campground max-price slider + saved-filter presets (populated later by
   // initFeatureFilters into #ff-presets; configured by initCampFilter).
@@ -4758,6 +4803,18 @@
       addPane('camping', 'Camping', 'fa-tent', p => p.appendChild(buildCampingFilters()));
     if (layers.some(l => CLIMB_SOURCES.includes(l.source_key)))
       addPane('climbing', 'Climbing', 'fa-mountain-sun', p => {
+        p.appendChild(buildTabSearch({
+          placeholder: 'Search routes & boulders…',
+          getItems: q => {
+            if (!q) return [];
+            const ql = q.toLowerCase(), out = [];
+            CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
+              const n = f.properties.name || '';
+              if (n.toLowerCase().includes(ql)) out.push({ name: n, meta: f.properties.grade || '', fly: () => flyToFeature(src, f.properties.id) });
+            }));
+            return out.slice(0, 40);
+          },
+        }).el);
         const cp = document.getElementById('climbing-filter-panel');
         if (cp) { cp.classList.remove('collapsed'); p.appendChild(cp); }
       });
@@ -4772,22 +4829,49 @@
     if (pl === CAMPING_SOURCE) active = Math.max(0, panes.findIndex(p => p.key === 'camping'));
     else { const ti = panes.findIndex(p => p.key === 'trails'); if (ti >= 0) active = ti; }
 
+    const setActive = i => {
+      activeFilterTab = panes[i] ? panes[i].key : null;
+      panes.forEach((p, j) => p.el.classList.toggle('active', j === i));
+      tabsEl.querySelectorAll('.fb-tab').forEach((b, j) => b.classList.toggle('active', j === i));
+      syncCampSearch();   // the campground search/list belongs to the Camping tab only
+    };
     panes.forEach((p, i) => {
       const t = document.createElement('button');
-      t.className = 'fb-tab' + (i === active ? ' active' : '');
+      t.className = 'fb-tab';
       t.innerHTML = `<i class="fa-solid ${p.icon}"></i> ${p.label}`;
-      t.addEventListener('click', () => {
-        panes.forEach(q => q.el.classList.toggle('active', q === p));
-        tabsEl.querySelectorAll('.fb-tab').forEach((b, j) => b.classList.toggle('active', j === i));
-      });
+      t.addEventListener('click', () => setActive(i));
       tabsEl.appendChild(t);
-      p.el.classList.toggle('active', i === active);
     });
     tabsEl.style.display = panes.length > 1 ? '' : 'none';
+    setActive(active);
+  }
+
+  // The campground search bar + List (.exp-bar-main) is shown only on the Camping tab.
+  function syncCampSearch() {
+    const mainEl = document.querySelector('#exp-bar .exp-bar-main');
+    if (mainEl) mainEl.style.display = (expPrimaryLayer && activeFilterTab === 'camping') ? '' : 'none';
   }
 
   function buildTrailFilters(pane, layers) {
     const title = txt => { const d = document.createElement('div'); d.className = 'fb-pane-title'; d.textContent = txt; pane.appendChild(d); };
+
+    // Search a trail name; list every named-trail variant that contains it.
+    pane.appendChild(buildTabSearch({
+      placeholder: 'Search trails…',
+      getItems: q => {
+        if (!q) return [];
+        const ql = q.toLowerCase(), groups = new Map();
+        Object.keys(layerCache).forEach(k => {
+          if (!k.startsWith('sauk_trail')) return;
+          (layerCache[k].features || []).forEach(f => {
+            const n = (f.properties.name || '').trim();
+            if (n && n.toLowerCase().includes(ql)) (groups.get(n) || groups.set(n, []).get(n)).push(f);
+          });
+        });
+        return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 50)
+          .map(([name, feats]) => ({ name, meta: feats.length + ' seg', fly: () => flyToTrailName(feats) }));
+      },
+    }).el);
 
     // Trail-type layer toggles (mirror the sidebar rows so the two stay in sync).
     const toggleSrcs = layers.filter(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops');
