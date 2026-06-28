@@ -1839,6 +1839,8 @@
   // or its name (legacy data). These helpers unify both so selecting an area
   // matches that area AND everything nested under it.
   let climbCountByKey = {};   // areaKey → # climbs in its sub-tree
+  let climbBrowseArea = 'all';   // area whose children the climbing search lists
+  let climbSearchRef = null;     // the climbing tab's search (buildTabSearch instance)
 
   // Area-uuid chain a climb belongs to (root → immediate parent), newest schema
   // first; falls back to [area_id] then [area_name] for older imports.
@@ -2697,6 +2699,7 @@
   // reveal + expand the climbing UI, filter to its sub-tree, and zoom to it.
   function selectClimbArea(areaKey) {
     if (areaKey !== 'all') areaKey = canonicalAreaKey(areaKey); // popups/markers may carry an alias id
+    climbBrowseArea = areaKey;   // the climbing search now browses this area's children
     // Climbs render through the area badges — the filter shows something
     // only if the areas layer exists and climb data is loaded. Otherwise
     // just zoom to the area.
@@ -2742,6 +2745,70 @@
     if (areaFeat && areaFeat.geometry.type === 'Point') {
       map.flyTo({ center: areaFeat.geometry.coordinates, zoom: Math.max(map.getZoom(), 15) });
     }
+  }
+
+  // ── Hierarchical climbing browse (areas dropdown + search column) ──
+  // The immediate (wall) area a climb belongs to — area_id first, else the
+  // deepest entry of its area_path.
+  function climbImmediateAreaKey(p) {
+    if (p.area_id) return canonicalAreaKey(p.area_id);
+    const chain = climbAreaChain(p);
+    return chain.length ? canonicalAreaKey(chain[chain.length - 1]) : '';
+  }
+  // True if a climb sits anywhere under areaKey's sub-tree ('all' = everything).
+  function climbInSubtree(p, areaKey) {
+    if (areaKey === 'all') return true;
+    return climbAreaChain(p).some(k => canonicalAreaKey(k) === areaKey);
+  }
+  // One search-list item for an area (drilling in zooms + reveals its children).
+  function climbAreaItem(key) {
+    const n = climbAreaNodes[key];
+    const c = climbCountByKey[key] || 0;
+    return { name: (n && n.name) || '(area)', meta: c ? c + ' ›' : '›', fly: () => { revealClimbArea(key); return true; } };
+  }
+  // Children of an area for the search list: a "back" row, child sub-areas (that
+  // have climbs), then the climbs that sit directly in this area.
+  function climbAreaChildren(areaKey) {
+    const nodes = climbAreaNodes;
+    const byName = (a, b) => ((nodes[a] && nodes[a].name) || '').localeCompare((nodes[b] && nodes[b].name) || '', undefined, { numeric: true, sensitivity: 'base' });
+    const keep = k => (climbCountByKey[k] || 0) || (nodes[k] && nodes[k].childKeys.length);
+    if (areaKey === 'all') {
+      return Object.values(nodes).filter(n => !n.parentKey || !nodes[n.parentKey]).map(n => n.key)
+        .filter(keep).sort(byName).map(climbAreaItem);
+    }
+    const node = nodes[areaKey];
+    const items = [];
+    const parent = node && node.parentKey && nodes[node.parentKey] ? node.parentKey : 'all';
+    items.push({ name: '↑ ' + (parent === 'all' ? 'All Areas' : nodes[parent].name), meta: '', fly: () => { revealClimbArea(parent); return true; } });
+    if (node) node.childKeys.slice().filter(keep).sort(byName).forEach(k => items.push(climbAreaItem(k)));
+    const climbs = [];
+    CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
+      const p = f.properties; const nm = p.name || '';
+      if (nm && climbImmediateAreaKey(p) === areaKey) climbs.push({ name: nm, meta: p.grade || '', fly: () => { flyToClimb(src, p.id); } });
+    }));
+    climbs.sort((a, b) => a.name.localeCompare(b.name));
+    return items.concat(climbs);
+  }
+  // Search items: empty → browse the current area's children; query → climbs in
+  // the current area's sub-tree matching the text.
+  function climbingSearchItems(q) {
+    const ql = (q || '').trim().toLowerCase();
+    if (!ql) return climbAreaChildren(climbBrowseArea);
+    const out = [];
+    CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
+      const p = f.properties; const nm = p.name || '';
+      if (nm && nm.toLowerCase().includes(ql) && climbInSubtree(p, climbBrowseArea))
+        out.push({ name: nm, meta: p.grade || '', fly: () => { flyToClimb(src, p.id); } });
+    }));
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    return out.slice(0, 200);
+  }
+  // Select an area (zoom + filter + dropdown sync) and reveal its children in the
+  // search list.
+  function revealClimbArea(areaKey) {
+    if (areaKey === 'all') { climbBrowseArea = 'all'; climbFilter.area = 'all'; applyClimbingFilters(); const sel = document.getElementById('cf-area'); if (sel) sel.value = 'all'; }
+    else selectClimbArea(areaKey);
+    if (climbSearchRef && climbSearchRef.open) climbSearchRef.open();
   }
 
   // Clear-filter pill → reuse the panel's full reset (state + chip UI + re-render)
@@ -3155,9 +3222,8 @@
       applyClimbingFilters();
     });
     document.getElementById('cf-area').addEventListener('change', e => {
-      // selectClimbArea applies the filter and zooms to the chosen area's climbs.
-      if (e.target.value === 'all') { climbFilter.area = 'all'; applyClimbingFilters(); }
-      else selectClimbArea(e.target.value);
+      // Zoom to the chosen area and reveal its children in the search list.
+      revealClimbArea(e.target.value);
     });
     document.querySelectorAll('#cf-types .cf-chip').forEach(chip => {
       chip.addEventListener('click', () => {
@@ -3199,6 +3265,8 @@
     const resetVRange = wireGradeRange('v', V_TOP, 'vmin', 'vmax', vRangeLabel);
     document.getElementById('cf-reset').addEventListener('click', () => {
       climbFilter.search = ''; climbFilter.area = 'all';
+      climbBrowseArea = 'all';
+      if (climbSearchRef && climbSearchRef.refresh) climbSearchRef.refresh();
       climbFilter.types.clear();
       input.value = '';
       clearBtn.style.display = 'none';
@@ -4826,8 +4894,10 @@
         ? items.map((it, i) => `<button class="exp-row" data-i="${i}"><span class="exp-row-name">${escapeHtml(it.name)}</span>${it.meta ? `<span class="exp-row-meta">${escapeHtml(it.meta)}</span>` : ''}</button>`).join('')
         : '<div class="exp-list-empty">No matches</div>';
       list.querySelectorAll('.exp-row').forEach(b => b.addEventListener('click', () => {
-        items[+b.dataset.i].fly();
-        list.classList.remove('open'); listBtn.classList.remove('active');
+        // fly() may return true to keep the list open (e.g. drilling into an
+        // area reveals its children in place instead of dismissing the list).
+        const keep = items[+b.dataset.i].fly();
+        if (!keep) { list.classList.remove('open'); listBtn.classList.remove('active'); }
       }));
     };
     const update = () => {
@@ -4848,7 +4918,8 @@
       listBtn.classList.toggle('active', open);
       if (open) renderRows(cfg.getItems(input.value.trim()));
     });
-    return { el: wrap, refresh: update };
+    const openList = () => { list.classList.add('open'); listBtn.classList.add('active'); renderRows(cfg.getItems(input.value.trim())); };
+    return { el: wrap, refresh: update, open: openList };
   }
 
   // Fly + highlight every segment of a named trail (its "variants").
@@ -4914,27 +4985,22 @@
     // with its tab so setActive can show only the active one. Keeps every tab's
     // search-column width identical to the campground module's.
     const addTabSearch = (tabKey, cfg) => {
-      if (!searchHost) return;
+      if (!searchHost) return null;
       const s = buildTabSearch(cfg);
       s.el.dataset.tab = tabKey;
       s.el.style.display = 'none';
       searchHost.appendChild(s.el);
+      return s;
     };
 
     if (has(CAMPING_SOURCE))
       addPane('camping', 'Camping', 'fa-tent', p => p.appendChild(buildCampingFilters()));
     if (layers.some(l => CLIMB_SOURCES.includes(l.source_key))) {
-      addTabSearch('climbing', {
-        placeholder: 'Search routes & boulders…',
-        getItems: q => {
-          const ql = q.toLowerCase(), out = [];
-          CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
-            const n = f.properties.name || '';
-            if (n && (!ql || n.toLowerCase().includes(ql))) out.push({ name: n, meta: f.properties.grade || '', fly: () => flyToFeature(src, f.properties.id) });
-          }));
-          out.sort((a, b) => a.name.localeCompare(b.name));
-          return out.slice(0, 200);
-        },
+      // Hierarchical browse: empty query lists the current area's children
+      // (sub-areas + climbs); typing searches climbs within that area's subtree.
+      climbSearchRef = addTabSearch('climbing', {
+        placeholder: 'Search areas & climbs…',
+        getItems: q => climbingSearchItems(q),
       });
       // Move the Areas dropdown + type chips under the climbing search bar (the
       // slot the DNR availability button occupies under the campground search), so
