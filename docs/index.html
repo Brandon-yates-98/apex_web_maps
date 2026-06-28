@@ -5096,11 +5096,43 @@
       syncCampSearch();   // the campground search/list belongs to the Camping tab only
       syncTabSearch();    // show the active tab's search in the search column
     };
+    // Switching to a tab turns on that module's mapping layer(s). Uses each
+    // layer's sidebar row (so lazy data-load + state stay correct); climbing
+    // follows its own enable path (split area rows, like selectClimbArea).
+    const enableTabLayers = tabKey => {
+      const enableRow = key => {
+        const row = document.querySelector(`.layer-row[data-source="${key}"]`);
+        if (row && !row.classList.contains('on')) row.click();
+        else if (!row && layerMeta[key]) setLayerVisible(key, true);
+      };
+      if (tabKey === 'camping') {
+        [CAMPING_SOURCE, CAMPSITE_SOURCE].forEach(enableRow);
+      } else if (tabKey === 'climbing') {
+        CLIMBING_SOURCES.forEach(s => {
+          if (!layerMeta[s]) return;
+          setLayerVisible(s, true);
+          const row = document.querySelector(`.layer-row[data-source="${s}"]`);
+          if (row) row.classList.add('on');
+        });
+        ['routes', 'boulders'].forEach(t => {
+          const row = document.querySelector(`.layer-row[data-source="climbing_areas@${t}"]`);
+          if (row) row.classList.add('on');
+        });
+      } else if (tabKey === 'trails') {
+        layers.filter(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops')
+          .forEach(l => enableRow(l.source_key));
+        // reflect the now-enabled layers in the trail tab's layer chips
+        document.querySelectorAll('#exp-filters .ft-chip-row .cf-chip[data-source]').forEach(chip => {
+          const r = document.querySelector(`.layer-row[data-source="${chip.dataset.source}"]`);
+          chip.classList.toggle('active', !!(r && r.classList.contains('on')));
+        });
+      }
+    };
     panes.forEach((p, i) => {
       const t = document.createElement('button');
       t.className = 'fb-tab';
       t.innerHTML = `<i class="fa-solid ${p.icon}"></i> ${p.label}`;
-      t.addEventListener('click', () => setActive(i));
+      t.addEventListener('click', () => { setActive(i); enableTabLayers(p.key); });
       tabsEl.appendChild(t);
     });
     tabsEl.style.display = panes.length > 1 ? '' : 'none';
@@ -5142,6 +5174,7 @@
         const sideRow = () => document.querySelector(`.layer-row[data-source="${key}"]`);
         const sr0 = sideRow();
         const chip = document.createElement('span');
+        chip.dataset.source = key;   // so enableTabLayers can re-sync the chip state
         chip.className = 'cf-chip' + ((sr0 ? sr0.classList.contains('on') : l.visible_by_default) ? ' active' : '');
         chip.textContent = (layerMeta[key] && layerMeta[key].label) || l.label || key;
         chip.addEventListener('click', () => {
