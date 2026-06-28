@@ -5205,9 +5205,13 @@
   }
 
   // Fly + highlight every segment of a named trail (its "variants").
-  function flyToTrailName(feats) {
+  // Set the trail highlight to a set of features (e.g. every segment of a named trail).
+  function highlightTrailFeatures(feats) {
     const s = map.getSource('trail_hl');
-    if (s) s.setData({ type: 'FeatureCollection', features: feats.map(f => ({ type: 'Feature', geometry: f.geometry, properties: {} })) });
+    if (s) s.setData({ type: 'FeatureCollection', features: (feats || []).map(f => ({ type: 'Feature', geometry: f.geometry, properties: {} })) });
+  }
+  function flyToTrailName(feats) {
+    highlightTrailFeatures(feats);
     let a = 180, b = 90, c = -180, d = -90;
     feats.forEach(f => {
       const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates]
@@ -5785,9 +5789,12 @@
   // sheet (same content + wiring) instead of an anchored popup.
   // Selected-trail highlight: a shared amber halo (trail_hl source) set to the
   // clicked trail's geometry, cleared when the popup closes or another opens.
+  // Highlight the WHOLE trail (every segment sharing the clicked trail's name),
+  // falling back to the single feature when it's unnamed.
   function highlightTrail(feature) {
-    const s = map.getSource('trail_hl');
-    if (s) s.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: feature.geometry, properties: {} }] });
+    const name = (feature.properties && feature.properties.name || '').trim();
+    const feats = name ? (trailNameGroups().get(name) || [feature]) : [feature];
+    highlightTrailFeatures(feats);
   }
   function clearTrailHighlight() {
     const s = map.getSource('trail_hl');
@@ -5996,6 +6003,7 @@
         .map(({ name, count }) => ({
           name, meta: count ? `${count} loop${count === 1 ? '' : 's'} ›` : '›',
           fly: () => { revealTrail(name); return true; },
+          hover: on => { if (on) highlightTrailFeatures(trailNameGroups().get(name) || []); else clearTrailHighlight(); },
         }));
     }
     const items = [{ name: '↑ All Trails', meta: '', fly: () => { revealTrail('all'); return true; } }];
@@ -6008,9 +6016,9 @@
   // loops when drilled, else all loops passing the filter).
   function fitHikingList() {
     if (!map || typeof mapboxgl === 'undefined') return;
-    const feats = trailBrowseTrail !== 'all'
-      ? loopsForTrail(trailBrowseTrail)
-      : ((layerCache['hiking_loops'] || {}).features || []).filter(f => loopPassesFilter(f.properties));
+    // Trail level (browsing trail names): just center on Devil's Lake.
+    if (trailBrowseTrail === 'all') { map.easeTo({ center: [-89.73, 43.43], zoom: 12.5 }); return; }
+    const feats = loopsForTrail(trailBrowseTrail);
     if (!feats || !feats.length) return;
     const b = new mapboxgl.LngLatBounds();
     feats.forEach(f => {
