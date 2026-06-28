@@ -1816,6 +1816,9 @@
 
   const CLIMBING_SOURCES = ['climbing_routes', 'climbing_boulders', 'climbing_areas'];
   const CLIMB_SOURCES = ['climbing_routes', 'climbing_boulders'];   // climbs only (no areas)
+  // Trail sources eligible to form hiking loops (matches compute_trail_loops.py).
+  // The Trails module only surfaces these (other trail types stay out of it).
+  const LOOP_TRAIL_SOURCES = ['sauk_trail_hiking', 'sauk_trail_hike_bike', 'sauk_trail_rescue_road'];
   // Climbs inherit their wall's GPS (every climb sits exactly on its area's
   // point), so routes/boulders render through their AREA's marker: a glyph
   // badge with a climb count. The climb sources load into layerCache for
@@ -5124,7 +5127,7 @@
           if (row) row.classList.add('on');
         });
       } else if (tabKey === 'trails') {
-        layers.filter(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops')
+        layers.filter(l => LOOP_TRAIL_SOURCES.includes(l.source_key) || l.source_key === 'hiking_loops')
           .forEach(l => enableRow(l.source_key));
         // reflect the now-enabled layers in the trail tab's layer chips
         document.querySelectorAll('#exp-filters .ft-chip-row .cf-chip[data-source]').forEach(chip => {
@@ -5178,8 +5181,9 @@
     const title = txt => { const d = document.createElement('div'); d.className = 'fb-pane-title'; d.textContent = txt; pane.appendChild(d); };
 
     // (Trail-name search now lives in the shared search column, built in buildFiltersBar.)
-    // Trail-type layer toggles (mirror the sidebar rows so the two stay in sync).
-    const toggleSrcs = layers.filter(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops');
+    // Trail-type layer toggles — only the loop-eligible trail layers (+ loops);
+    // other trail types are intentionally left out of this module.
+    const toggleSrcs = layers.filter(l => LOOP_TRAIL_SOURCES.includes(l.source_key) || l.source_key === 'hiking_loops');
     if (toggleSrcs.length) {
       title('Trail layers');
       const row = document.createElement('div');
@@ -5224,9 +5228,8 @@
     const surfRow = document.getElementById('ft-surface-row');
     if (!skillRow || !surfRow) return;
     const skills = new Set(), surfaces = new Set();
-    Object.keys(layerCache).forEach(k => {
-      if (!k.startsWith('sauk_trail')) return;
-      (layerCache[k].features || []).forEach(f => {
+    LOOP_TRAIL_SOURCES.forEach(k => {
+      ((layerCache[k] || {}).features || []).forEach(f => {
         const p = f.properties || {};
         if (p.skill_level) skills.add(String(p.skill_level));
         if (p.surface) surfaces.add(String(p.surface));
@@ -5540,8 +5543,7 @@
   // Named-trail features grouped by name (for fly/highlight + the trail list).
   function trailNameGroups() {
     const groups = new Map();
-    Object.keys(layerCache).forEach(k => {
-      if (!k.startsWith('sauk_trail')) return;
+    LOOP_TRAIL_SOURCES.forEach(k => {
       ((layerCache[k] || {}).features || []).forEach(f => {
         const n = (f.properties.name || '').trim();
         if (!n) return;
@@ -5587,13 +5589,15 @@
         .map(f => ({ name: f.properties.name || 'Loop', meta: loopMeta(f.properties), fly: () => { selectLoop(f); } }));
     }
     if (trailBrowseTrail === 'all') {
-      return [...trailNameGroups().entries()]
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
+      // Default sort: most loops first (tie-break by name).
+      return [...trailNameGroups().keys()]
+        .map(name => ({ name, count: loopsForTrail(name).length }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
         .slice(0, 400)
-        .map(([name, feats]) => {
-          const lc = loopsForTrail(name).length;
-          return { name, meta: lc ? `${lc} loop${lc === 1 ? '' : 's'} ›` : '›', fly: () => { revealTrail(name); return true; } };
-        });
+        .map(({ name, count }) => ({
+          name, meta: count ? `${count} loop${count === 1 ? '' : 's'} ›` : '›',
+          fly: () => { revealTrail(name); return true; },
+        }));
     }
     const items = [{ name: '↑ All Trails', meta: '', fly: () => { revealTrail('all'); return true; } }];
     const loops = loopsForTrail(trailBrowseTrail).sort(byDist);
