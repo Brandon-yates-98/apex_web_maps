@@ -23,6 +23,36 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1"></script>
+  <!-- ─── PostHog product analytics (open source, Cloud free tier) ───
+       Loads array.js from us-assets.i.posthog.com and POSTs events to
+       us.i.posthog.com/e/. The service worker (sw.js) passes both through
+       untouched (only specific CDN hosts + Mapbox/Supabase are cached, and
+       Cache Storage can't key POSTs anyway), so no sw change is needed.
+       This is separate from Mapbox tile telemetry — no TOS conflict.
+       Cookieless (persistence:'localStorage') so no consent banner is needed.
+       TODO: paste your project API key below (Project Settings → API key).
+       If you picked the EU region at signup, swap us.i / us-assets.i → eu.i / eu-assets.i. -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('PH_PROJECT_API_KEY', {
+      api_host: 'https://us.i.posthog.com',
+      persistence: 'localStorage',          // cookieless — no consent banner needed
+      person_profiles: 'identified_only',    // anonymous visitors don't create profiles (lighter, cheaper)
+      autocapture: true,                     // auto-track clicks/inputs on buttons & links
+      capture_pageview: true,
+      disable_session_recording: true        // off: heavy + a privacy ask on a public map
+    });
+    // Segment every event by which experience the visitor is in. Registered
+    // synchronously from the URL so the FIRST pageview already carries it (most
+    // links include ?experience=); bootstrap() re-registers the resolved slug +
+    // title to cover the no-param 'default'/first-public fallback case.
+    try {
+      var _exp = new URLSearchParams(location.search).get('experience');
+      if (_exp) posthog.register({ experience: _exp });
+    } catch (e) {}
+    // No-op safe wrapper so capture() calls never throw if the key is missing or PH is blocked.
+    window.track = function (event, props) { try { window.posthog && posthog.capture(event, props); } catch (e) {} };
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2205,6 +2235,7 @@
         const url = provider === 'campspot'
           ? campspotUrl(cfg, { ...opts, category: typeSel.value || '' })
           : goingToCampUrl(cfg.ids, { ...opts, subEquipmentId: +typeSel.value || -32768 });
+        track('reservation_clicked', { provider, nights: opts.nights });
         window.open(url, '_blank', 'noopener');
         close();
       });
@@ -4531,6 +4562,7 @@
     const url = isApple
       ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=${walk ? 'w' : 'd'}`
       : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=${walk ? 'walking' : 'driving'}`;
+    track('directions_opened', { provider: isApple ? 'apple' : 'google', mode: walk ? 'walking' : 'driving', lng, lat });
     window.open(url, '_blank', 'noopener');
   }
 
@@ -4876,7 +4908,12 @@
           if (prev && prev.classList.contains('cf-label')) col.appendChild(prev);
           col.appendChild(el);
         };
-        moveWithLabel(cp.querySelector('#cf-types'), right);          // type chips
+        const types = cp.querySelector('#cf-types');
+        if (types) {
+          const tlbl = types.previousElementSibling;   // drop the "Type" header
+          if (tlbl && tlbl.classList.contains('cf-label')) tlbl.remove();
+          right.appendChild(types);
+        }
         cp.querySelectorAll('.cf-vrange').forEach(vr => moveWithLabel(vr, right));  // both grade sliders
         const rc = cp.querySelector('#cf-result-count'); if (rc) right.appendChild(rc);
         const rst = cp.querySelector('#cf-reset'); if (rst) right.appendChild(rst);
@@ -5704,6 +5741,11 @@
     experienceConfig = config;
     const exp = config.experience;
 
+    // Re-register the experience super property with the resolved slug (covers
+    // the no-?experience= fallback) and the human-readable title, so all events
+    // are segmentable by experience in PostHog.
+    try { window.posthog && posthog.register({ experience: slug, experience_title: exp.title || slug }); } catch (e) {}
+
     // Apply header
     document.getElementById('map-title').textContent = exp.title || 'Trail Map';
     document.title = `${exp.title} — Devil's Lake Mapping Project`;
@@ -6189,6 +6231,7 @@
 
   // ── Street View modal ───────────────────────────────────────────
   function openStreetView(lng, lat, title, heading) {
+    track('streetview_opened', { title: title || '', lng, lat });
     const wrap = document.getElementById('sv-frame-wrap');
     wrap.innerHTML = '';
     const iframe = document.createElement('iframe');
