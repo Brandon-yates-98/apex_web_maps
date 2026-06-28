@@ -415,12 +415,11 @@
     #fb-search-host { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-width: 0; }
     #fb-search-host #cf-types { margin-top: 8px; }   /* type chips under the search bar */
     #exp-bar.collapsed #fb-search-host { display: none !important; }
-    .fb-search { position: relative; }
     .fb-search .exp-search-wrap { flex: 0 1 280px; }
-    /* The result/browse list floats as a dropdown overlay below the search column
-       so opening it never resizes the bar/container. */
-    .fb-list { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 60;
-      flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; margin-top: 4px;
+    /* The result/browse list floats as a dropdown overlay below the whole bar row
+       (full bar width, like the camping list) without resizing the container. */
+    .fb-list { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+      flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto;
       background: rgba(14,22,12,0.97); border: 1px solid rgba(155,194,60,0.3); border-radius: 12px; padding: 4px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     .fb-list.open { display: flex; }
@@ -1312,6 +1311,7 @@
       font-family: 'Inter', sans-serif;
     }
     .exp-bar-row {
+      position: relative;   /* positioning context for the full-width .fb-list overlay */
       display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
       background: rgba(14,22,12,0.92); backdrop-filter: blur(6px);
       border: 1px solid rgba(155,194,60,0.35); border-radius: 12px;
