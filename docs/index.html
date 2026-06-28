@@ -442,7 +442,8 @@
     #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grades .cf-label { margin-top: 0; }
     #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grades { margin-top: 0; }
     #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grade {
-      display: flex; flex-direction: column; justify-content: space-between; min-height: 35px; }
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-height: var(--cf-grade-h, 35px); }   /* --cf-grade-h = measured search-bar height */
     #exp-bar[data-filter-tab="climbing"] #exp-filters .cf-grade .cf-vrange { margin-top: 0; margin-bottom: 0; }
     @media (max-width: 600px) {
       #fb-search-host { flex: 1 1 100%; order: 1; }
@@ -5099,6 +5100,9 @@
       if (barEl) barEl.dataset.filterTab = activeFilterTab || '';   // CSS hook for per-tab layout
       syncCampSearch();   // the campground search/list belongs to the Camping tab only
       syncTabSearch();    // show the active tab's search in the search column
+      // Match the grade columns' height to the (now-visible) search bar so the
+      // headings top-align and the sliders bottom-align with it.
+      if (activeFilterTab === 'climbing') requestAnimationFrame(syncClimbGradeHeight);
     };
     // Switching to a tab turns on that module's mapping layer(s). Uses each
     // layer's sidebar row (so lazy data-load + state stay correct); climbing
@@ -5161,6 +5165,16 @@
       if (on) any = true;
     });
     host.style.display = any ? '' : 'none';
+  }
+
+  // Set --cf-grade-h to the climbing search bar's height so each grade column
+  // spans it exactly (heading top-aligns, slider bottom-aligns with the bar).
+  function syncClimbGradeHeight() {
+    const bar = document.getElementById('exp-bar');
+    const sr = document.querySelector('#fb-search-host .fb-search[data-tab="climbing"] .exp-bar-search-row');
+    if (!bar || !sr) return;
+    const h = sr.getBoundingClientRect().height;
+    if (h) bar.style.setProperty('--cf-grade-h', Math.round(h) + 'px');
   }
 
   function buildTrailFilters(pane, layers) {
