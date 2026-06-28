@@ -481,6 +481,18 @@
       background: rgba(14,22,12,0.97); border: 1px solid rgba(155,194,60,0.3); border-radius: 12px; padding: 4px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     .fb-list.open { display: flex; }
+    /* Collapse button pinned to the bottom center of the open list */
+    .fb-collapse-row { position: sticky; bottom: 0; display: flex; justify-content: center; padding: 6px 0 2px; margin-top: 2px;
+      background: linear-gradient(to top, rgba(14,22,12,0.99) 65%, rgba(14,22,12,0)); }
+    .fb-collapse { display: inline-flex; align-items: center; gap: 5px; background: rgba(155,194,60,0.14); color: #b6d96a;
+      border: 1px solid rgba(155,194,60,0.4); border-radius: 7px; padding: 4px 16px; font-size: 10.5px; font-weight: 800;
+      cursor: pointer; font-family: inherit; }
+    .fb-collapse:hover { background: rgba(155,194,60,0.24); }
+    /* Hiking module: Trails | Loops layer toggle under the search bar */
+    .fb-modetoggle { display: flex; margin-top: 8px; border: 1px solid rgba(155,194,60,0.4); border-radius: 8px; overflow: hidden; }
+    .fb-modetoggle button { flex: 1 1 0; background: transparent; color: rgba(255,255,255,0.6); border: none;
+      padding: 6px 8px; font-size: 11px; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .fb-modetoggle button.active { background: rgba(155,194,60,0.28); color: #cfe3a8; }
     /* Sort header at the top of the browse list (hiking loops) */
     .fb-sort { display: flex; align-items: center; gap: 6px; padding: 3px 4px 6px; margin-bottom: 2px;
       position: sticky; top: 0; background: rgba(14,22,12,0.99); border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 1; }
@@ -621,7 +633,7 @@
 
     /* Floating clear-filter pill (top-center of the map) */
     #climb-filter-chip {
-      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
       z-index: 250; max-width: 70%;
       display: flex; align-items: center; gap: 7px;
       padding: 7px 12px; border-radius: 18px; border: 1px solid rgba(155,194,60,0.5);
@@ -897,6 +909,15 @@
     .tr-pop-attr { margin-top: 8px; font-size: 9.5px; color: #9aa19a; }
     .tr-pop-attr a { color: #6c8c2e; text-decoration: none; font-weight: 600; }
     .tr-pop-attr a:hover { text-decoration: underline; }
+    /* Associated-loops list in the trail popup */
+    .tr-pop-loops { margin: 2px 0 9px; }
+    .tr-pop-loops-lbl { font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #999; margin-bottom: 5px; }
+    .tr-loop-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left;
+      background: #f4f7ee; border: 1px solid #e3ead6; border-radius: 6px; padding: 6px 9px; margin-bottom: 4px;
+      color: #1f3a17; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .tr-loop-row:hover { background: #e9f1d8; border-color: #c3d89a; }
+    .tr-loop-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tr-loop-meta { font-size: 10.5px; color: #4a7a2a; white-space: nowrap; font-weight: 700; }
     /* Horizontal galleries (photos + amenities): drag on mobile, arrows on desktop */
     .dl-gal { position: relative; }
     .dl-gal-arrow {
@@ -1957,6 +1978,37 @@
   let trailShowingLoops = false; // true when the trail list is showing loops (sort header)
   // Loop distance/elevation-gain filter (set by the Trails tab sliders).
   const trailLoopFilter = { distMin: -Infinity, distMax: Infinity, gainMin: -Infinity, gainMax: Infinity };
+  let hikingLayerMode = 'trails';   // hiking module shows ONE of: trail lines ('trails') or loops ('loops')
+
+  // Set a layer's visibility + its sidebar row state together.
+  function setLayerOn(key, on) {
+    if (!layerMeta[key]) return;
+    setLayerVisible(key, on);
+    const row = document.querySelector(`.layer-row[data-source="${key}"]`);
+    if (row) row.classList.toggle('on', on);
+  }
+  // Hiking module shows trail lines OR loops, never both (the layer manager can
+  // still override). Switching to loops keeps any active loop highlight.
+  function setHikingMode(mode) {
+    hikingLayerMode = mode === 'loops' ? 'loops' : 'trails';
+    const loopsOn = hikingLayerMode === 'loops';
+    LOOP_TRAIL_SOURCES.forEach(k => setLayerOn(k, !loopsOn));
+    setLayerOn('hiking_loops', loopsOn);
+    document.querySelectorAll('#fb-search-host .fb-modetoggle button')
+      .forEach(b => b.classList.toggle('active', b.dataset.mode === hikingLayerMode));
+    if (!loopsOn) clearLoopSel();   // leaving the loops view drops the loop highlight
+  }
+  // Apply the distance/elevation sliders to the loops MAP layer (the list filter
+  // is separate, in trailsSearchItems).
+  function applyLoopMapFilter() {
+    if (!map || !map.getLayer('hiking_loops-line')) return;
+    const f = trailLoopFilter, cl = ['all'];
+    if (isFinite(f.distMin)) cl.push(['>=', ['coalesce', ['to-number', ['get', 'distance_mi']], -1], f.distMin]);
+    if (isFinite(f.distMax)) cl.push(['<=', ['coalesce', ['to-number', ['get', 'distance_mi']], 1e9], f.distMax]);
+    if (isFinite(f.gainMin)) cl.push(['>=', ['coalesce', ['to-number', ['get', 'elev_gain_ft']], -1], f.gainMin]);
+    if (isFinite(f.gainMax)) cl.push(['<=', ['coalesce', ['to-number', ['get', 'elev_gain_ft']], 1e9], f.gainMax]);
+    map.setFilter('hiking_loops-line', cl.length > 1 ? cl : null);
+  }
 
   // Area-uuid chain a climb belongs to (root → immediate parent), newest schema
   // first; falls back to [area_id] then [area_name] for older imports.
@@ -3116,19 +3168,22 @@
     });
     if (countEl) countEl.textContent = feats.length;
     if (!listEl) return;
-    listEl.innerHTML = feats.length ? feats.map(f => {
+    listEl.innerHTML = (feats.length ? feats.map(f => {
       const p = f.properties;
       const meta = p.min_price != null ? `$${p.min_price}` : '';
       return `<button class="exp-row" data-id="${escapeHtml(String(p.id))}">`
         + `<span class="exp-row-name">${escapeHtml(p.name || '(unnamed)')}</span>`
         + (meta ? `<span class="exp-row-meta">${escapeHtml(meta)}</span>` : '')
         + '</button>';
-    }).join('') : '<div class="exp-list-empty">No matches</div>';
+    }).join('') : '<div class="exp-list-empty">No matches</div>')
+      + '<div class="fb-collapse-row"><button class="fb-collapse" type="button" aria-label="Close list"><i class="fa-solid fa-chevron-up"></i> Close</button></div>';
+    const closeExpList = () => { listEl.classList.remove('open'); const lb = document.getElementById('exp-list-btn'); if (lb) lb.classList.remove('active'); };
     listEl.querySelectorAll('.exp-row').forEach(btn => btn.addEventListener('click', () => {
-      listEl.classList.remove('open');
-      document.getElementById('exp-list-btn').classList.remove('active');
+      closeExpList();
       flyToFeature(expPrimaryLayer, btn.dataset.id);
     }));
+    const ecb = listEl.querySelector('.fb-collapse');
+    if (ecb) ecb.addEventListener('click', closeExpList);
   }
 
   function setupExperienceBar() {
@@ -3167,7 +3222,10 @@
       clearTimeout(deb); deb = setTimeout(() => render(v.trim()), 120);
       refreshExpList();
     });
-    input.addEventListener('focus', () => { if (input.value.trim()) render(input.value.trim()); });
+    input.addEventListener('focus', () => {
+      if (input.value.trim()) render(input.value.trim());
+      listEl.classList.add('open'); if (lBtn) lBtn.classList.add('active'); refreshExpList();   // clicking in opens the list
+    });
     clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.style.display = 'none'; closeSugg(); refreshExpList(); });
     document.addEventListener('click', e => { if (sugg && !sugg.contains(e.target) && e.target !== input) closeSugg(); });
 
@@ -3602,6 +3660,18 @@
       fact('fa-road', props.surface),
       fact('fa-circle-check', props.condition),
     ].filter(Boolean).join('');
+    // Loops that run on this trail (clickable; wired in openFeaturePopup).
+    const nl = name.toLowerCase();
+    const loops = ((layerCache['hiking_loops'] || {}).features || [])
+      .filter(f => loopTrailNames(f.properties).some(t => t.toLowerCase() === nl))
+      .sort((a, b) => (+a.properties.distance_mi || 0) - (+b.properties.distance_mi || 0));
+    const loopsHTML = loops.length ? `<div class="tr-pop-loops">
+        <div class="tr-pop-loops-lbl"><i class="fa-solid fa-arrows-spin"></i> Loops on this trail</div>
+        ${loops.map(f => `<button class="tr-loop-row" type="button" data-loop-id="${escapeHtml(String((f.properties || {}).id))}">
+            <span class="tr-loop-nm">${escapeHtml(f.properties.name || 'Loop')}</span>
+            <span class="tr-loop-meta">${escapeHtml(loopMeta(f.properties))}</span>
+          </button>`).join('')}
+      </div>` : '';
     return `<div class="dl-popup-custom"><div class="tr-pop">
       <div class="tr-pop-head" style="border-bottom-color:${meta.color}">
         <div class="tr-pop-title">${escapeHtml(name)}</div>
@@ -3611,6 +3681,7 @@
         ${facts ? `<div class="tr-pop-facts">${facts}</div>` : ''}
         ${buildElevProfileSVG(props, meta.color)}
         ${props.trail_function ? `<div class="tr-pop-fn">${escapeHtml(String(props.trail_function))}</div>` : ''}
+        ${loopsHTML}
         <button class="popup-directions-btn"><i class="fa-solid fa-route"></i> Directions</button>
         <div class="tr-pop-attr">Trail data by <a href="https://www.co.sauk.wi.us" target="_blank" rel="noopener">Sauk County GIS</a></div>
       </div>
@@ -4985,11 +5056,13 @@
     const listBtn = wrap.querySelector('.fb-list-btn');
     const countEl = wrap.querySelector('.fb-list-count');
     const list = wrap.querySelector('.fb-list');
+    const closeList = () => { list.classList.remove('open'); listBtn.classList.remove('active'); };
     const renderRows = items => {
       const header = cfg.header ? cfg.header() : '';
+      const footer = '<div class="fb-collapse-row"><button class="fb-collapse" type="button" aria-label="Close list"><i class="fa-solid fa-chevron-up"></i> Close</button></div>';
       list.innerHTML = header + (items.length
         ? items.map((it, i) => `<button class="exp-row" data-i="${i}"><span class="exp-row-name">${escapeHtml(it.name)}</span>${it.meta ? `<span class="exp-row-meta">${escapeHtml(it.meta)}</span>` : ''}</button>`).join('')
-        : '<div class="exp-list-empty">No matches</div>');
+        : '<div class="exp-list-empty">No matches</div>') + footer;
       // Optional sort header (re-renders the list when a sort changes).
       list.querySelectorAll('.fb-sort-btn').forEach(b => b.addEventListener('click', () => {
         if (cfg.onSort) cfg.onSort(b.dataset.sort);
@@ -4999,8 +5072,10 @@
         // fly() may return true to keep the list open (e.g. drilling into an
         // area reveals its children in place instead of dismissing the list).
         const keep = items[+b.dataset.i].fly();
-        if (!keep) { list.classList.remove('open'); listBtn.classList.remove('active'); }
+        if (!keep) closeList();
       }));
+      const cb = list.querySelector('.fb-collapse');
+      if (cb) cb.addEventListener('click', closeList);
     };
     const update = () => {
       const q = input.value.trim();
@@ -5021,6 +5096,7 @@
       if (open) renderRows(cfg.getItems(input.value.trim()));
     });
     const openList = () => { list.classList.add('open'); listBtn.classList.add('active'); renderRows(cfg.getItems(input.value.trim())); };
+    input.addEventListener('focus', openList);   // clicking into the search opens the list
     return { el: wrap, refresh: update, open: openList };
   }
 
@@ -5167,6 +5243,18 @@
           </div>` : '',
         onSort: v => { trailLoopSort = v; },
       });
+      // Trails | Loops layer toggle under the hiking search bar — the module shows
+      // one at a time (the layer manager can still override).
+      const trailSearchEl = searchHost && searchHost.querySelector('.fb-search[data-tab="trails"]');
+      if (trailSearchEl) {
+        const tog = document.createElement('div');
+        tog.className = 'fb-modetoggle';
+        tog.innerHTML = `<button type="button" data-mode="trails"${hikingLayerMode !== 'loops' ? ' class="active"' : ''}>Trails</button>`
+          + `<button type="button" data-mode="loops"${hikingLayerMode === 'loops' ? ' class="active"' : ''}>Loops</button>`;
+        tog.addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setHikingMode(b.dataset.mode); });
+        const fbList = trailSearchEl.querySelector('.fb-list');
+        trailSearchEl.insertBefore(tog, fbList);
+      }
       addPane('trails', 'Hiking', 'fa-person-hiking', p => buildTrailFilters(p, layers));
     }
 
@@ -5219,6 +5307,10 @@
           if (row) row.classList.toggle('on', climbOn);
         });
       }
+      // Hiking shows ONE of trail lines / loops (per the module toggle); default
+      // 'trails' so loops start off. (The generic loop above flipped them all on;
+      // this corrects to a single mode.)
+      if (tabKey === 'trails') setHikingMode(hikingLayerMode);
       ALWAYS_ON_LAYERS.forEach(k => setLayer(k, true));   // parking + roads on everywhere
     };
     panes.forEach((p, i) => {
@@ -5350,13 +5442,14 @@
     trailLoopFilter.distMin = -Infinity; trailLoopFilter.distMax = Infinity;
     trailLoopFilter.gainMin = -Infinity; trailLoopFilter.gainMax = Infinity;
     host.innerHTML = '';
+    const onFilter = () => { if (trailSearchRef) trailSearchRef.refresh(); applyLoopMapFilter(); };
     host.appendChild(buildRangeControl({
       label: 'Distance', min: 0, max: dHi, step: 0.5, fmt: (a, b) => `${a}–${b} mi`,
-      onChange: (a, b) => { trailLoopFilter.distMin = a; trailLoopFilter.distMax = b; if (trailSearchRef) trailSearchRef.refresh(); },
+      onChange: (a, b) => { trailLoopFilter.distMin = a; trailLoopFilter.distMax = b; onFilter(); },
     }));
     host.appendChild(buildRangeControl({
       label: 'Elevation gain', min: 0, max: gHi, step: 50, fmt: (a, b) => `${a}–${b} ft`,
-      onChange: (a, b) => { trailLoopFilter.gainMin = a; trailLoopFilter.gainMax = b; if (trailSearchRef) trailSearchRef.refresh(); },
+      onChange: (a, b) => { trailLoopFilter.gainMin = a; trailLoopFilter.gainMax = b; onFilter(); },
     }));
   }
   // A loop passes the distance/elevation-gain filter.
@@ -5609,11 +5702,18 @@
     // Highlight for the parking lot chosen in the loop popup (polygon fill+outline
     // or a point marker), matching the blue spur.
     map.addSource('park_sel', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({ id: 'park_sel-fill', type: 'fill', source: 'park_sel',
+    const POLY = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
+    const PT = ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false];
+    // Polygon lots: recolor fill + a soft blurred halo (NO vertex dots).
+    map.addLayer({ id: 'park_sel-fill', type: 'fill', source: 'park_sel', filter: POLY,
       paint: { 'fill-color': '#1f5fa8', 'fill-opacity': 0.35 } });
-    map.addLayer({ id: 'park_sel-line', type: 'line', source: 'park_sel',
+    map.addLayer({ id: 'park_sel-halo', type: 'line', source: 'park_sel', filter: POLY,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#4a9be8', 'line-width': 8, 'line-blur': 5, 'line-opacity': 0.85 } });
+    map.addLayer({ id: 'park_sel-line', type: 'line', source: 'park_sel', filter: POLY,
       paint: { 'line-color': '#1f5fa8', 'line-width': 2.5 } });
-    map.addLayer({ id: 'park_sel-pt', type: 'circle', source: 'park_sel',
+    // Point lots (fallback): a single marker, only for actual point geometry.
+    map.addLayer({ id: 'park_sel-pt', type: 'circle', source: 'park_sel', filter: PT,
       paint: { 'circle-color': '#1f5fa8', 'circle-radius': 8, 'circle-opacity': 0.85,
         'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
   }
@@ -5649,6 +5749,7 @@
     return [[a, b], [c, d]];
   }
   function selectLoop(f) {
+    setHikingMode('loops');   // picking a loop switches the hiking module to the loops layer
     ensureLoopSel();
     map.getSource('loop_sel').setData({ type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: f.geometry, properties: {} }] });
@@ -5797,6 +5898,7 @@
       if (full) feature = full;
     }
     clearTrailHighlight();
+    if (sourceKey !== 'hiking_loops') clearLoopSel();   // don't let a loop highlight linger on other features
     const tpEl = document.getElementById('trail-popup');   // close any lingering right panel
     if (tpEl) tpEl.classList.remove('open');
     const html = buildPopupHTML(feature.properties, sourceKey);
@@ -5937,6 +6039,14 @@
           const { fsrc, fid } = btn.dataset;
           surface.remove();
           flyToClimb(fsrc, fid);
+        });
+      });
+      // Trail popup → loops on this trail: select the loop (switches to loops view).
+      el.querySelectorAll('.tr-loop-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const lf = ((layerCache['hiking_loops'] || {}).features || [])
+            .find(f => String((f.properties || {}).id) === String(btn.dataset.loopId));
+          if (lf) selectLoop(lf);
         });
       });
       // Submit photo button
