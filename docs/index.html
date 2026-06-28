@@ -383,7 +383,10 @@
     .loop-empty { font-size: 11px; color: rgba(255,255,255,0.4); padding: 6px; }
 
     /* ── Filter tabs inside the experience bar (Camping / Climbing / Trails) ── */
-    #exp-filters .fb-body { max-height: min(58vh, 440px); overflow-y: auto; min-width: 230px; }
+    /* Fixed filters width so every tab's filters area is identical (matches the
+       campground module's filters column); the search column adds the same 280px
+       on every tab, so the whole bar is one consistent width across tabs. */
+    #exp-filters .fb-body { max-height: min(58vh, 440px); overflow-y: auto; width: 260px; }
     .fb-pane { display: none; }
     .fb-pane.active { display: block; }
     /* Relocated modules render normally inside a pane regardless of their old
@@ -408,33 +411,28 @@
     .fb-tab.active { background: rgba(14,22,12,0.92); color: #9bc23c; }
     .ft-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
     #exp-bar.collapsed .fb-tabs { display: none !important; }
-    /* Per-tab search + inline result list (reuses the campsite search styling) */
-    .fb-search { margin-bottom: 8px; }
-    .fb-search .exp-search-wrap { flex: 1 1 auto; }
+    /* Per-tab search column (Climbing/Trails) — same width logic as .exp-bar-main:
+       a 280px search-wrap + List button, so the search column matches camping. */
+    #fb-search-host { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-width: 0; }
+    #exp-bar.collapsed #fb-search-host { display: none !important; }
+    .fb-search .exp-search-wrap { flex: 0 1 280px; }
     .fb-list { display: none; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; margin-top: 6px;
       background: rgba(14,22,12,0.97); border: 1px solid rgba(155,194,60,0.3); border-radius: 12px; padding: 4px; }
     .fb-list.open { display: flex; }
-    #exp-filters .cf-search-wrap { display: none; }   /* climbing uses the unified search */
-    #exp-filters #climbing-filter-panel { padding: 0; border: none; margin: 0; }
-    /* Climbing tab: two columns sized to match the campgrounds module footprint
-       (left = search + area like the campground search; right = sliders + chips) */
-    .cf-cols { display: flex; gap: 16px; align-items: flex-start; }
-    .cf-col { display: flex; flex-direction: column; }
-    .cf-cols .cf-col:first-child { flex: 0 1 280px; min-width: 220px; }   /* mirrors .exp-search-wrap width */
-    .cf-cols .cf-col:last-child { flex: 1 1 240px; min-width: 220px; }
-    .cf-cols .cf-col > :first-child { margin-top: 0; }
-    .cf-cols .cf-label { margin-top: 9px; margin-bottom: 0; }
-    .cf-cols .cf-vrange { margin-top: 0; }
-    .cf-cols #cf-result-count { margin-top: 8px; }
+    #exp-filters .cf-search-wrap { display: none; }   /* climbing search lives in the search column */
+    #exp-filters #climbing-filter-panel { padding: 0; border: none; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+    #exp-filters #climbing-filter-panel .cf-label { margin-top: 9px; margin-bottom: 0; }
+    #exp-filters #climbing-filter-panel > :first-child { margin-top: 0; }
+    #exp-filters #cf-result-count { margin-top: 8px; }
     /* Two grade sliders side by side */
     .cf-grades { display: flex; gap: 12px; align-items: flex-start; }
     .cf-grade { flex: 1 1 0; min-width: 0; }
     .cf-grades .cf-label { margin-top: 0; }
     .cf-grade .cf-vrange { margin-left: 0; margin-right: 0; }
-    .cf-cols #cf-types { margin-top: 10px; }
+    #exp-filters #cf-types { margin-top: 10px; }
     @media (max-width: 600px) {
-      .cf-cols { flex-direction: column; gap: 4px; }
-      .cf-col, .cf-cols .cf-col:first-child, .cf-cols .cf-col:last-child { min-width: 0; flex: 1 1 auto; }
+      #fb-search-host { flex: 1 1 100%; order: 1; }
+      #exp-filters .fb-body { width: auto; }
     }
 
     /* ── Climbing filter panel ── */
@@ -1697,6 +1695,9 @@
             <button id="avail-btn" class="avail-btn"><i class="fa-solid fa-calendar-check"></i> DNR Campsite Availability</button>
           </div>
         </div>
+        <!-- Per-tab search column for Climbing/Trails (mirrors .exp-bar-main so every
+             tab has the same search-column + filters width as the campground module) -->
+        <div id="fb-search-host" style="display:none"></div>
         <div id="exp-filters" class="exp-filters"></div>
         <button id="exp-collapse" class="exp-bar-btn" aria-label="Collapse search & filters" title="Collapse">
           <i class="fa-solid fa-magnifying-glass exp-c-open"></i>
@@ -3036,6 +3037,7 @@
       refreshExpList();
     }
     syncCampSearch();   // campground search/list shows only on the Camping tab
+    syncTabSearch();    // and the active tab's search in the search column
     requestAnimationFrame(syncBarHeight);
   }
 
@@ -4859,9 +4861,11 @@
   function buildFiltersBar(layers) {
     const host = document.getElementById('exp-filters');
     const tabsEl = document.getElementById('fb-tabs');
+    const searchHost = document.getElementById('fb-search-host');
     if (!host || !tabsEl) return;
     host.innerHTML = '';
     tabsEl.innerHTML = '';
+    if (searchHost) searchHost.innerHTML = '';
     const body = document.createElement('div');
     body.className = 'fb-body';
     host.appendChild(body);
@@ -4875,44 +4879,46 @@
       body.appendChild(pane);
       panes.push({ key, label, icon, el: pane });
     };
+    // A per-tab search lives in the shared search column (#fb-search-host), tagged
+    // with its tab so setActive can show only the active one. Keeps every tab's
+    // search-column width identical to the campground module's.
+    const addTabSearch = (tabKey, cfg) => {
+      if (!searchHost) return;
+      const s = buildTabSearch(cfg);
+      s.el.dataset.tab = tabKey;
+      s.el.style.display = 'none';
+      searchHost.appendChild(s.el);
+    };
 
     if (has(CAMPING_SOURCE))
       addPane('camping', 'Camping', 'fa-tent', p => p.appendChild(buildCampingFilters()));
-    if (layers.some(l => CLIMB_SOURCES.includes(l.source_key)))
+    if (layers.some(l => CLIMB_SOURCES.includes(l.source_key))) {
+      addTabSearch('climbing', {
+        placeholder: 'Search routes & boulders…',
+        getItems: q => {
+          const ql = q.toLowerCase(), out = [];
+          CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
+            const n = f.properties.name || '';
+            if (n && (!ql || n.toLowerCase().includes(ql))) out.push({ name: n, meta: f.properties.grade || '', fly: () => flyToFeature(src, f.properties.id) });
+          }));
+          out.sort((a, b) => a.name.localeCompare(b.name));
+          return out.slice(0, 200);
+        },
+      });
       addPane('climbing', 'Climbing', 'fa-mountain-sun', p => {
         const cp = document.getElementById('climbing-filter-panel');
         if (!cp) return;
         cp.classList.remove('collapsed');
         p.appendChild(cp);
-        // Restructure into two columns ONCE — the panel is a singleton re-appended
-        // on every layer rebuild, so guard against accumulating duplicates.
-        if (cp.dataset.fbCols) return;
-        cp.dataset.fbCols = '1';
-        // Left = search + List + Areas dropdown; right = type chips + grade sliders.
-        // Move the wired controls (ids preserved) into the columns.
-        const cols = document.createElement('div'); cols.className = 'cf-cols';
-        const left = document.createElement('div'); left.className = 'cf-col';
-        const right = document.createElement('div'); right.className = 'cf-col';
-        cols.appendChild(left); cols.appendChild(right);
-        left.appendChild(buildTabSearch({
-          placeholder: 'Search routes & boulders…',
-          getItems: q => {
-            const ql = q.toLowerCase(), out = [];
-            CLIMB_SOURCES.forEach(src => ((layerCache[src] || {}).features || []).forEach(f => {
-              const n = f.properties.name || '';
-              if (n && (!ql || n.toLowerCase().includes(ql))) out.push({ name: n, meta: f.properties.grade || '', fly: () => flyToFeature(src, f.properties.id) });
-            }));
-            out.sort((a, b) => a.name.localeCompare(b.name));
-            return out.slice(0, 200);
-          },
-        }).el);
-        const area = cp.querySelector('#cf-area');
-        if (area) {
-          const lbl = area.previousElementSibling;   // drop the "Area" header
-          if (lbl && lbl.classList.contains('cf-label')) lbl.remove();
-          left.appendChild(area);
-        }
-        // Grade sliders side by side (each keeps its small header above it).
+        // Reflow the singleton panel ONCE into a single filters column (search now
+        // lives in the search column): area, then grade sliders side by side, then
+        // the type chips. Drop the in-panel search + the Area/Type headers.
+        if (cp.dataset.fbReflow) return;
+        cp.dataset.fbReflow = '1';
+        const sw = cp.querySelector('.cf-search-wrap'); if (sw) sw.remove();
+        const dropLabel = el => { if (!el) return; const l = el.previousElementSibling; if (l && l.classList.contains('cf-label')) l.remove(); };
+        const area = cp.querySelector('#cf-area'); dropLabel(area);
+        const types = cp.querySelector('#cf-types'); dropLabel(types);
         const grades = document.createElement('div'); grades.className = 'cf-grades';
         cp.querySelectorAll('.cf-vrange').forEach(vr => {
           const grp = document.createElement('div'); grp.className = 'cf-grade';
@@ -4921,20 +4927,32 @@
           grp.appendChild(vr);
           grades.appendChild(grp);
         });
-        right.appendChild(grades);
-        // Type chips under the sliders (header dropped).
-        const types = cp.querySelector('#cf-types');
-        if (types) {
-          const tlbl = types.previousElementSibling;
-          if (tlbl && tlbl.classList.contains('cf-label')) tlbl.remove();
-          right.appendChild(types);
-        }
-        const rc = cp.querySelector('#cf-result-count'); if (rc) right.appendChild(rc);
-        const rst = cp.querySelector('#cf-reset'); if (rst) right.appendChild(rst);
-        cp.appendChild(cols);
+        // Reorder the controls in the panel (appendChild moves existing nodes).
+        if (area) cp.appendChild(area);
+        cp.appendChild(grades);
+        if (types) cp.appendChild(types);
+        const rc = cp.querySelector('#cf-result-count'); if (rc) cp.appendChild(rc);
+        const rst = cp.querySelector('#cf-reset'); if (rst) cp.appendChild(rst);
       });
-    if (layers.some(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops'))
+    }
+    if (layers.some(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops')) {
+      addTabSearch('trails', {
+        placeholder: 'Search trails…',
+        getItems: q => {
+          const ql = q.toLowerCase(), groups = new Map();
+          Object.keys(layerCache).forEach(k => {
+            if (!k.startsWith('sauk_trail')) return;
+            (layerCache[k].features || []).forEach(f => {
+              const n = (f.properties.name || '').trim();
+              if (n && (!ql || n.toLowerCase().includes(ql))) (groups.get(n) || groups.set(n, []).get(n)).push(f);
+            });
+          });
+          return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 200)
+            .map(([name, feats]) => ({ name, meta: feats.length + ' seg', fly: () => flyToTrailName(feats) }));
+        },
+      });
       addPane('trails', 'Trails', 'fa-person-hiking', p => buildTrailFilters(p, layers));
+    }
 
     if (!panes.length) { tabsEl.style.display = 'none'; return; }
 
@@ -4949,6 +4967,7 @@
       panes.forEach((p, j) => p.el.classList.toggle('active', j === i));
       tabsEl.querySelectorAll('.fb-tab').forEach((b, j) => b.classList.toggle('active', j === i));
       syncCampSearch();   // the campground search/list belongs to the Camping tab only
+      syncTabSearch();    // show the active tab's search in the search column
     };
     panes.forEach((p, i) => {
       const t = document.createElement('button');
@@ -4967,26 +4986,24 @@
     if (mainEl) mainEl.style.display = (expPrimaryLayer && activeFilterTab === 'camping') ? '' : 'none';
   }
 
+  // Show the active tab's search in the shared search column; hide the host when the
+  // active tab has none (e.g. Camping, which uses .exp-bar-main instead).
+  function syncTabSearch() {
+    const host = document.getElementById('fb-search-host');
+    if (!host) return;
+    let any = false;
+    host.querySelectorAll('.fb-search').forEach(el => {
+      const on = el.dataset.tab === activeFilterTab;
+      el.style.display = on ? '' : 'none';
+      if (on) any = true;
+    });
+    host.style.display = any ? '' : 'none';
+  }
+
   function buildTrailFilters(pane, layers) {
     const title = txt => { const d = document.createElement('div'); d.className = 'fb-pane-title'; d.textContent = txt; pane.appendChild(d); };
 
-    // Search a trail name; list every named-trail variant that contains it.
-    pane.appendChild(buildTabSearch({
-      placeholder: 'Search trails…',
-      getItems: q => {
-        const ql = q.toLowerCase(), groups = new Map();
-        Object.keys(layerCache).forEach(k => {
-          if (!k.startsWith('sauk_trail')) return;
-          (layerCache[k].features || []).forEach(f => {
-            const n = (f.properties.name || '').trim();
-            if (n && (!ql || n.toLowerCase().includes(ql))) (groups.get(n) || groups.set(n, []).get(n)).push(f);
-          });
-        });
-        return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 200)
-          .map(([name, feats]) => ({ name, meta: feats.length + ' seg', fly: () => flyToTrailName(feats) }));
-      },
-    }).el);
-
+    // (Trail-name search now lives in the shared search column, built in buildFiltersBar.)
     // Trail-type layer toggles (mirror the sidebar rows so the two stay in sync).
     const toggleSrcs = layers.filter(l => l.source_key.startsWith('sauk_trail') || l.source_key === 'hiking_loops');
     if (toggleSrcs.length) {
