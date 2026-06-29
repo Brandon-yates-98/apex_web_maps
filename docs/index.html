@@ -1347,6 +1347,13 @@
       box-shadow: 0 8px 30px rgba(0,0,0,0.45); font-family: 'Inter', sans-serif;
     }
     #trail-popup.open { display: flex; }
+    /* When the experience/filter bar is present, drop the popup below it (and cap
+       its height to the space underneath) so the two never collide. */
+    body.has-exp-bar #trail-popup {
+      top: calc(var(--exp-bar-h, 56px) + 20px + env(safe-area-inset-top, 0px));
+      transform: none;
+      max-height: calc(100% - var(--exp-bar-h, 56px) - 32px);
+    }
     .trail-popup-content { overflow-y: auto; max-height: calc(100dvh - 24px); }
     .trail-popup-content .dl-popup-custom,
     .trail-popup-content .dl-popup-custom > * { width: 100% !important; max-width: 100%; box-sizing: border-box; }
