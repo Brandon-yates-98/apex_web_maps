@@ -2,7 +2,7 @@
 
 An installable, offline-capable web map for outdoor recreation around **Devil's Lake / Baraboo / Sauk County, Wisconsin**, trails, climbing, campsites, and points of interest. No app store, no native code: one HTML file, Mapbox GL JS, and Supabase.
 
-This is an **independent community project, maintained by a single developer** and not run for profit. It is **not affiliated with, endorsed by, or operated by the Wisconsin DNR or any other government agency or organization** (see [Independence](#independence)); ownership and liability stay with the project itself.
+This is an **independent community project, maintained by a single developer**. It is **not affiliated with, endorsed by, or operated by the Wisconsin DNR or any other government agency or organization** (see [Independence](#independence)); ownership and liability stay with the project itself.
 
 **Live map:** https://brandon-yates-98.github.io/devils-lake-mapping-project/
 
@@ -91,4 +91,4 @@ compute_drive_times.py   ← one-time drive-time precompute (Mapbox Directions A
 
 **Forking this for another area?** See [`REPLICATE.md`](REPLICATE.md) for the full step-by-step.
 
-Independent, noncommercial community project. Climbing is dangerous, this map is informational and is no substitute for guidebooks, local knowledge, or judgment.
+Independent community project. Climbing is dangerous, this map is informational and is no substitute for guidebooks, local knowledge, or judgment.
