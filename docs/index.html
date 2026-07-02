@@ -285,11 +285,17 @@
     }
     .offline-status.ok { color: #9bc23c; }
     .offline-tip {
+      position: relative;
       font-size: 9.5px; color: rgba(255,255,255,0.4); line-height: 1.5;
-      margin-top: 8px; padding: 7px 9px;
+      margin-top: 8px; padding: 7px 22px 7px 9px;
       background: rgba(255,255,255,0.04); border-radius: 5px;
     }
     .offline-tip b, .offline-tip i { color: rgba(255,255,255,0.65); }
+    .offline-tip-close {
+      position: absolute; top: 3px; right: 4px; background: none; border: none;
+      color: rgba(255,255,255,0.45); font-size: 14px; line-height: 1; cursor: pointer; padding: 2px 5px;
+    }
+    .offline-tip-close:hover { color: rgba(255,255,255,0.8); }
     /* Offline save is a phone feature (take the map to the crag) — hide it on desktop. */
     @media (min-width: 601px) { #offline-section { display: none; } }
     .panel-section.collapsed > *:not(.panel-section-title) { display: none; }
@@ -522,6 +528,11 @@
     /* Climbing filters are short — don't scroll (the slider transform was adding
        scrollable overflow). */
     #exp-bar[data-filter-tab="climbing"] #exp-filters .fb-body { overflow: visible; }
+    /* Hiking (trails): the filters are just two range sliders, so trim the row's vertical
+       padding + the label/slider margins that otherwise leave the module mostly empty. */
+    #exp-bar[data-filter-tab="trails"] .exp-bar-row { padding-top: 8px; padding-bottom: 8px; }
+    #exp-bar[data-filter-tab="trails"] #exp-filters .cf-grades .cf-label { margin-bottom: 2px; }
+    #exp-bar[data-filter-tab="trails"] #exp-filters .cf-grade .cf-vrange { margin-top: 0; margin-bottom: 0; }
     @media (max-width: 600px) {
       #fb-search-host { flex: 1 1 100%; order: 1; }
       #exp-filters .fb-body { width: auto; }
@@ -1851,14 +1862,21 @@
       <button id="ff-clear" class="cf-reset-btn">Clear Filters</button>
     </div>
 
-    <!-- Offline: save the experience to the device (PWA) -->
+    <!-- Install as an app (PWA). Android/Chromium: one-tap native prompt; iOS: a manual hint. -->
+    <div class="panel-section" id="install-section" style="display:none">
+      <div class="panel-section-title">Install</div>
+      <button id="install-btn" class="offline-btn" style="display:none"><i class="fa-solid fa-square-plus"></i> Add to home screen</button>
+      <div id="ios-install-tip" class="offline-tip" style="display:none">
+        <button id="ios-tip-close" class="offline-tip-close" aria-label="Dismiss">&times;</button>
+        Tap <i class="fa-solid fa-arrow-up-from-bracket"></i> Share, then <b>Add to Home Screen</b>.
+      </div>
+    </div>
+
+    <!-- Offline: prefetch the experience + basemap tiles to the device -->
     <div class="panel-section" id="offline-section">
       <div class="panel-section-title">Offline</div>
       <button id="offline-save-btn" class="offline-btn"><i class="fa-solid fa-download"></i> Save map for offline use</button>
       <div id="offline-status" class="offline-status"></div>
-      <div id="ios-install-tip" class="offline-tip" style="display:none">
-        Tip: tap <i class="fa-solid fa-arrow-up-from-bracket"></i> Share → <b>Add to Home Screen</b> to install this map as an app.
-      </div>
     </div>
 
     <div class="panel-footer">
@@ -5857,11 +5875,12 @@
       _sheetWired = true;
       // Bi-directional resize: drag the handle UP to enlarge the sheet, DOWN to shrink
       // it; shrink it far enough and release to dismiss.
-      let startY = null, startH = 0;
+      let startY = null, startH = 0, lastY = 0, lastT = 0, vY = 0;
       const vh = () => window.innerHeight;
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
       const dragStart = e => {
-        startY = e.touches[0].clientY;
+        startY = lastY = e.touches[0].clientY;
+        lastT = e.timeStamp; vY = 0;
         startH = sheet.getBoundingClientRect().height;
         sheet.style.transition = 'none';
         sheet.style.transform = '';                        // drop any leftover hide transform
@@ -5869,17 +5888,25 @@
       };
       const dragMove = e => {
         if (startY == null) return;
-        const dy = startY - e.touches[0].clientY;          // drag up → positive → taller
-        sheet.style.height = clamp(startH + dy, 48, vh() * 0.92) + 'px';
+        const y = e.touches[0].clientY, t = e.timeStamp;
+        if (t > lastT) vY = (y - lastY) / (t - lastT);     // px/ms, positive = moving down
+        lastY = y; lastT = t;
+        const dy = startY - y;                             // drag up → positive → taller
+        const max = vh() * 0.92;
+        let h = startH + dy;
+        if (h > max) h = max + (h - max) * 0.15;           // rubber-band resistance past the top edge
+        sheet.style.height = Math.max(40, h) + 'px';       // hard floor; release settles or dismisses
         e.preventDefault();                                // resize instead of scrolling the content
       };
       const dragEnd = () => {
         if (startY == null) return;
         const h = sheet.getBoundingClientRect().height;
         startY = null;
-        if (h < vh() * 0.16) { hide(); return; }                             // shrunk small → dismiss (fully hide)
-        sheet.style.transition = '';
-        sheet.style.height = clamp(h, vh() * 0.28, vh() * 0.92) + 'px';       // else settle within bounds
+        // Quick downward flick dismisses regardless of size; so does shrinking it small.
+        if (vY > 0.6 || h < vh() * 0.16) { hide(); return; }
+        // Spring to the settled height with a slight overshoot bounce.
+        sheet.style.transition = 'height 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        sheet.style.height = clamp(h, vh() * 0.28, vh() * 0.92) + 'px';
       };
       handle.addEventListener('touchstart', dragStart, { passive: true });
       handle.addEventListener('touchmove', dragMove, { passive: false });
@@ -7058,12 +7085,49 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
-  // iOS never prompts for install — nudge Safari users toward Add to Home Screen
   const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if (isIos && !isStandalone) {
-    document.getElementById('ios-install-tip').style.display = 'block';
+  const installSection = document.getElementById('install-section');
+  const installBtn = document.getElementById('install-btn');
+  const iosTip = document.getElementById('ios-install-tip');
+  const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const showInstallSection = () => { if (installSection) installSection.style.display = 'block'; };
+
+  // Android / Chromium / desktop: capture the native install prompt and replay it from
+  // our own button — one tap, no menu-digging or multistep instructions.
+  let deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstall = e;
+    if (installBtn) installBtn.style.display = '';
+    showInstallSection();
+  });
+  if (installBtn) installBtn.addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice.catch(() => {});
+    deferredInstall = null;
+    installBtn.style.display = 'none';
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstall = null;
+    if (installBtn) installBtn.style.display = 'none';
+    if (iosTip) iosTip.style.display = 'none';
+  });
+
+  // iOS Safari never fires beforeinstallprompt — it's the one platform with no install
+  // API, so show a compact, dismissible Share → Add to Home Screen hint instead.
+  if (isIos && !isStandalone && iosTip && lsGet('dl-ios-tip-dismissed') !== '1') {
+    iosTip.style.display = 'block';
+    showInstallSection();
   }
+  const iosTipClose = document.getElementById('ios-tip-close');
+  if (iosTipClose) iosTipClose.addEventListener('click', () => {
+    if (iosTip) iosTip.style.display = 'none';
+    lsSet('dl-ios-tip-dismissed', '1');
+    if (installSection && (!installBtn || installBtn.style.display === 'none')) installSection.style.display = 'none';
+  });
 
   // ── Offline basemap tile prefetch ────────────────────────────
   function lng2tile(lng, z) { return Math.floor((lng + 180) / 360 * 2 ** z); }
