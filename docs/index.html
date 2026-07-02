@@ -3873,8 +3873,8 @@
     return `<div class="dl-popup-custom"><div class="tr-pop">
       <div class="tr-pop-head" style="border-bottom-color:${meta.color}">
         <div class="tr-pop-title">${escapeHtml(name)}</div>
-        ${len ? `<span class="tr-pop-headfact"><i class="fa-solid fa-ruler-horizontal"></i> ${len}</span>` : ''}
-        ${gain ? `<span class="tr-pop-headfact"><i class="fa-solid fa-mountain"></i> ${gain}</span>` : ''}
+        ${len ? `<span class="tr-pop-headfact">${len}</span>` : ''}
+        ${gain ? `<span class="tr-pop-headfact">${gain}</span>` : ''}
         ${type ? `<span class="tr-pop-type" style="background:${meta.color}"><i class="fa-solid ${meta.icon}"></i> ${escapeHtml(type)}</span>` : ''}
       </div>
       <div class="tr-pop-body">
@@ -3882,7 +3882,6 @@
         ${buildElevProfileSVG(se, meta.color)}
         ${props.trail_function ? `<div class="tr-pop-fn">${escapeHtml(String(props.trail_function))}</div>` : ''}
         ${loopsHTML}
-        <button class="popup-directions-btn"><i class="fa-solid fa-route"></i> Directions</button>
         <div class="tr-pop-attr">Trail data by <a href="https://www.co.sauk.wi.us" target="_blank" rel="noopener">Sauk County GIS</a></div>
       </div>
     </div></div>`;
