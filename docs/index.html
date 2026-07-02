@@ -689,20 +689,29 @@
       border: 2px solid #1a2418; cursor: pointer;
     }
 
-    /* Bigger slider grab areas on touch devices. Keep the thin visual track but
-       enlarge the thumb + vertical hit area (the desktop-mouse sizes are too small
-       to hit with a fingertip). */
+    /* Bigger slider grab areas on touch devices WITHOUT enlarging the visible dots.
+       - cf-vrange: only the thumb receives pointer events (the overlaid inputs are
+         pointer-events:none), so the thumb box IS the hit target — keep it 22px but
+         paint only the original small circle via a radial-gradient (transparent rest).
+       - df-slider: the whole input is tappable, so just make it a tall (26px) touch
+         band with a thin runnable-track visual; the real 15px thumb is unchanged. */
     @media (pointer: coarse), (max-width: 600px) {
       .cf-vrange { height: 30px; }
       .cf-vrange::before, .cf-vrange-fill { top: 13.5px; }
       .cf-vrange input[type="range"] { height: 30px; }
-      .cf-vrange input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
-      .cf-vrange input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+      /* 22px hit box, but only a 13px circle (9px fill + 2px ring) is painted. */
+      .cf-vrange input[type="range"]::-webkit-slider-thumb {
+        width: 22px; height: 22px; border: none; background: transparent;
+        background-image: radial-gradient(circle, #9bc23c 0 4.5px, #15240f 4.5px 6.5px, transparent 6.5px);
+      }
+      .cf-vrange input[type="range"]::-moz-range-thumb {
+        width: 22px; height: 22px; border: none; background: transparent;
+        background-image: radial-gradient(circle, #9bc23c 0 3px, #15240f 3px 5px, transparent 5px);
+      }
       .df-slider { height: 26px; background: transparent; }
       .df-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 3px; background: rgba(255,255,255,0.12); }
-      .df-slider::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; } /* center on 4px track: (4-22)/2 */
+      .df-slider::-webkit-slider-thumb { margin-top: -5.5px; } /* re-center the unchanged 15px thumb on the 4px track: (4-15)/2 */
       .df-slider::-moz-range-track { height: 4px; border-radius: 3px; background: rgba(255,255,255,0.12); }
-      .df-slider::-moz-range-thumb { width: 22px; height: 22px; }
     }
 
     /* ── Feature filters (presets + ad-hoc) ── */
@@ -1400,11 +1409,13 @@
     .trail-popup-content { overflow-y: auto; max-height: calc(100dvh - 24px); }
     .trail-popup-content .dl-popup-custom,
     .trail-popup-content .dl-popup-custom > * { width: 100% !important; max-width: 100%; box-sizing: border-box; }
+    /* Dark chip so the ✕ stays visible over BOTH the dark header and the light
+       "Back to trail" button (loops opened from a trail render that button on top). */
     .trail-popup-close {
-      position: absolute; top: 4px; right: 6px; z-index: 2; background: none; border: none;
-      color: rgba(255,255,255,0.75); font-size: 18px; line-height: 1; padding: 5px 8px; cursor: pointer;
+      position: absolute; top: 4px; right: 6px; z-index: 2; background: rgba(0,0,0,0.4); border: none; border-radius: 6px;
+      color: #fff; font-size: 18px; line-height: 1; padding: 5px 8px; cursor: pointer;
     }
-    .trail-popup-close:hover { color: #fff; background: rgba(255,255,255,0.14); border-radius: 0 8px 0 6px; }
+    .trail-popup-close:hover { background: rgba(0,0,0,0.62); }
     @media (max-width: 600px) { #trail-popup { display: none !important; } }  /* phones use the bottom sheet */
 
     /* ─── Mobile feature bottom-sheet (small screens only; see #feature-sheet) ─── */
@@ -1423,18 +1434,26 @@
     }
     @media (max-width: 600px) { #feature-sheet { display: flex; } }
     #feature-sheet.open { transform: translateY(0); }
+    /* Big invisible grab zone — the bare 4px pill is nearly impossible to hit with a
+       fingertip, so drags never registered. Visible pill is drawn via ::before. */
     .feature-sheet-handle {
-      width: 40px; height: 4px; border-radius: 2px; flex-shrink: 0;
-      background: rgba(255,255,255,0.25); margin: 9px auto 5px; cursor: grab;
-      touch-action: none;
+      width: 120px; height: 26px; flex-shrink: 0;
+      margin: 2px auto 0; cursor: grab; touch-action: none;
+      display: flex; align-items: center; justify-content: center;
     }
+    .feature-sheet-handle::before {
+      content: ''; width: 40px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.25);
+    }
+    /* Dark chip so the ✕ stays visible over BOTH the dark header and the light
+       "Back to trail" button (loops opened from a trail render that button on top). */
     .feature-sheet-close {
       position: absolute; top: 6px; right: 8px; z-index: 2;
       width: 40px; height: 40px;
-      background: rgba(255,255,255,0.08); border: none; border-radius: 8px;
-      color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer;
+      background: rgba(0,0,0,0.45); border: none; border-radius: 8px;
+      color: #fff; font-size: 18px; cursor: pointer;
     }
-    .feature-sheet-close:active { background: rgba(255,255,255,0.16); }
+    .feature-sheet-close:active { background: rgba(0,0,0,0.65); }
     .feature-sheet-content { overflow-y: auto; -webkit-overflow-scrolling: touch; }
     #feature-sheet .popup-header { border-radius: 0; }
     /* Popup content is authored for the narrow desktop popup (e.g. custom
