@@ -698,6 +698,11 @@
     @media (pointer: coarse), (max-width: 600px) {
       .cf-vrange { height: 30px; }
       .cf-vrange::before, .cf-vrange-fill { top: 13.5px; }
+      /* The 22px hit box is wider than the 13px dot, so the dot sits 4.5px in from each
+         track end. Inset the track + green fill by that much so no green pokes past the
+         dots when the range is fully extended. (Desktop's box == dot, so it stays flush.) */
+      .cf-vrange::before { left: 4.5px; right: 4.5px; }
+      .cf-vrange-fill { margin: 0 4.5px; }
       .cf-vrange input[type="range"] { height: 30px; }
       /* 22px hit box, but only a 13px circle (9px fill + 2px ring) is painted. */
       .cf-vrange input[type="range"]::-webkit-slider-thumb {
@@ -1434,12 +1439,13 @@
     }
     @media (max-width: 600px) { #feature-sheet { display: flex; } }
     #feature-sheet.open { transform: translateY(0); }
-    /* Big invisible grab zone — the bare 4px pill is nearly impossible to hit with a
-       fingertip, so drags never registered. Visible pill is drawn via ::before. */
+    /* Full-width, tall invisible grab zone — the bare 4px pill is nearly impossible to
+       hit with a fingertip. The visible pill (::before) stays pinned near the top; the
+       whole strip below it is draggable. */
     .feature-sheet-handle {
-      width: 120px; height: 26px; flex-shrink: 0;
-      margin: 2px auto 0; cursor: grab; touch-action: none;
-      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 56px; flex-shrink: 0; box-sizing: border-box;
+      margin: 0; padding-top: 9px; cursor: grab; touch-action: none;
+      display: flex; align-items: flex-start; justify-content: center;
     }
     .feature-sheet-handle::before {
       content: ''; width: 40px; height: 4px; border-radius: 2px;
@@ -1471,9 +1477,16 @@
     #feature-sheet .cs-pop-svcap { color: rgba(255,255,255,0.6); }
     #feature-sheet .cs-fact-details { color: rgba(255,255,255,0.72); }
     #feature-sheet .cs-pop-attr { color: rgba(255,255,255,0.5); }
-    /* Keep the title clear of the absolute close button (44px) in the sheet. */
-    #feature-sheet .popup-header,
-    #feature-sheet .cp-head { padding-right: 52px; }
+    /* Trail/loop header: drop the dark green bar so the title + chip blend into the
+       sheet, and make the whole header a drag-to-dismiss grab surface (no ✕ on mobile). */
+    #feature-sheet .tr-pop-head {
+      background: none; border-bottom: none; padding: 6px 13px;
+      cursor: grab; touch-action: none;
+      /* Title + chip share one row (they were stacked) and padding is trimmed, so the
+         header is ~half its previous height. Wraps to two rows for very long titles. */
+      display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    #feature-sheet .tr-pop-head .tr-pop-type { margin-top: 0; }
     /* Campground popup: drive times stacked, beside the price (mobile sheet). */
     #feature-sheet .cp-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
     #feature-sheet .cp-pricecol { min-width: 0; }
@@ -1641,7 +1654,6 @@
      the same buildPopupHTML content is mounted here and wired by openFeaturePopup) ── -->
 <div id="feature-sheet" role="dialog" aria-modal="false" aria-label="Feature details">
   <div class="feature-sheet-handle" aria-hidden="true"></div>
-  <button class="feature-sheet-close" aria-label="Close">&#x2715;</button>
   <div class="feature-sheet-content"></div>
 </div>
 
@@ -5808,23 +5820,29 @@
     requestAnimationFrame(() => sheet.classList.add('open'));
     if (!_sheetWired) {
       _sheetWired = true;
-      sheet.querySelector('.feature-sheet-close')
-        .addEventListener('click', () => sheet.classList.remove('open'));
-      // swipe the handle down to dismiss
-      const handle = sheet.querySelector('.feature-sheet-handle');
+      // Swipe down to dismiss — via the handle pill OR by dragging the popup header
+      // (the title + chip). The header is re-injected per feature, so it's delegated.
       let startY = null;
-      handle.addEventListener('touchstart', e => {
-        startY = e.touches[0].clientY; sheet.style.transition = 'none';
-      }, { passive: true });
-      handle.addEventListener('touchmove', e => {
+      const dragStart = e => { startY = e.touches[0].clientY; sheet.style.transition = 'none'; };
+      const dragMove = e => {
         if (startY == null) return;
-        sheet.style.transform = `translateY(${Math.max(0, e.touches[0].clientY - startY)}px)`;
-      }, { passive: true });
-      handle.addEventListener('touchend', e => {
+        const dy = Math.max(0, e.touches[0].clientY - startY);
+        sheet.style.transform = `translateY(${dy}px)`;
+        if (dy > 0) e.preventDefault();   // don't let the content scroll while dragging
+      };
+      const dragEnd = e => {
         sheet.style.transition = ''; sheet.style.transform = '';
         if (startY != null && e.changedTouches[0].clientY - startY > 80) sheet.classList.remove('open');
         startY = null;
-      });
+      };
+      const handle = sheet.querySelector('.feature-sheet-handle');
+      handle.addEventListener('touchstart', dragStart, { passive: true });
+      handle.addEventListener('touchmove', dragMove, { passive: false });
+      handle.addEventListener('touchend', dragEnd);
+      // Header drag: only start when the touch lands on the title header.
+      content.addEventListener('touchstart', e => { if (e.target.closest('.tr-pop-head')) dragStart(e); }, { passive: true });
+      content.addEventListener('touchmove', e => { if (startY != null) dragMove(e); }, { passive: false });
+      content.addEventListener('touchend', dragEnd);
     }
     return {
       getElement: () => sheet,
